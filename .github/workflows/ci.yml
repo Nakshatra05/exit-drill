@@ -14,5 +14,6 @@ jobs:
       - run: npm run contracts:compile
       - run: git diff --exit-code -- src/generated
       - run: npm test
+      - run: npm run test:mcp
       - run: npm run test:contracts
       - run: npm run build
