@@ -31,4 +31,4 @@ The Sepolia deployment uses independent test pools and freely mintable test asse
 - [Contract adversarial tests](scripts/test-contracts.ts).
 - [Independent settlement verifier](src/lib/verify-settlement.ts).
 
-This feedback describes implemented behavior and observed development friction. The required Uniswap feedback form has **not** been submitted automatically. Use this public file link in the form: https://github.com/Nakshatra05/exit-drill/blob/main/FEEDBACK.md
+This feedback describes implemented behavior and observed development friction. Reproduce the execution and guard checks with `npm run test:contracts`.
