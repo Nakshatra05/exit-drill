@@ -16,7 +16,7 @@ The sandbox works without accounts, API keys, wallets or real funds. It uses off
 
 ## Development
 
-Node.js 22 or 24 and npm:
+Node.js 24 and npm 11.6.0 (the lockfile is generated with npm 11):
 
 ```sh
 npm ci
@@ -27,6 +27,8 @@ npm run dev
 ```
 
 Open http://localhost:3000. `npm run build` includes TypeScript checking. Generated ABI/bytecode artifacts are committed; CI verifies reproducible compilation.
+
+Live demo: **https://exit-drill.vercel.app**. Run `npm run test:smoke -- https://exit-drill.vercel.app` to verify its complete API flow, contract rejection, exact balance reconciliation, checksum and input/authentication rejection.
 
 ## Architecture
 

@@ -45,5 +45,6 @@
   "type": "module",
   "optionalDependencies": {
     "@rolldown/binding-win32-x64-msvc": "^1.2.8"
-  }
+  },
+  "packageManager": "npm@11.6.0"
 }
