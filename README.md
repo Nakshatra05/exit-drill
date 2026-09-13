@@ -6,6 +6,8 @@ A treasury stress lab for ETHOnline 2026. A token balance is not a cash guarante
 
 ## Demo
 
+Visit [the landing page](https://exit-drill.vercel.app), [the stress lab](https://exit-drill.vercel.app/app), or [the documentation](https://exit-drill.vercel.app/docs).
+
 1. Keep the reference scenario at **30 WETH / $60,000 payroll / 25% shock**.
 2. **Run stress test**. Actual Uniswap v3 routes execute in an isolated EVM. The deeper 0.30% route returns about **54,896 USDC**, leaving a **5,104 USDC shortfall**.
 3. **Review exit policy** and approve the minimum output.

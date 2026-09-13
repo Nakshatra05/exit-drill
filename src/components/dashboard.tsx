@@ -285,6 +285,10 @@ export default function Dashboard() {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <a className="source-link" href="/docs">
+            <FileCheck2 size={17} />
+            Documentation <ArrowUpRight size={13} />
+          </a>
           <div className="network-card">
             <span className="tiny-label">EXECUTION NETWORK</span>
             <strong>
@@ -1316,7 +1320,7 @@ export default function Dashboard() {
             </div>
             <a
               className="docs-link"
-              href="https://github.com/Nakshatra05/exit-drill#configuration"
+              href="/docs#configuration"
               target="_blank"
               rel="noreferrer"
             >
