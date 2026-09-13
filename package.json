@@ -44,6 +44,7 @@
   },
   "type": "module",
   "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "^1.2.8",
     "@rolldown/binding-win32-x64-msvc": "^1.2.8"
   },
   "packageManager": "npm@11.6.0"
