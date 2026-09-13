@@ -1122,16 +1122,33 @@ export default function Dashboard({
                     </div>
                     <div className="receipt-amount">
                       {r.amountInEth} WETH <ArrowRight />{" "}
-                      {money(r.amountOutUsdc, 2)} <small>USDC</small>
+                      {r.amountOutUsdc.toLocaleString(undefined, {
+                        maximumFractionDigits: 6,
+                      })}{" "}
+                      <small>USDC</small>
                     </div>
                     <dl>
                       <div>
                         <dt>Transaction</dt>
-                        <dd>{short(r.transactionHash)}</dd>
+                        <dd>
+                          <a
+                            href={`https://sepolia.etherscan.io/tx/${r.transactionHash}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {short(r.transactionHash)}{" "}
+                            <ExternalLink size={12} />
+                          </a>
+                        </dd>
                       </div>
                       <div>
                         <dt>Minimum output</dt>
-                        <dd>{money(r.minimumOutUsdc, 2)} USDC</dd>
+                        <dd>
+                          {r.minimumOutUsdc.toLocaleString(undefined, {
+                            maximumFractionDigits: 6,
+                          })}{" "}
+                          USDC
+                        </dd>
                       </div>
                       <div>
                         <dt>Network / block</dt>
@@ -1147,7 +1164,7 @@ export default function Dashboard({
                         <dt>Policy enforcement</dt>
                         <dd>
                           {r.policy.engine === "contract"
-                            ? "Rehearsal limits"
+                            ? "Exit contract limits"
                             : "Wallet + exit limits"}
                         </dd>
                       </div>
@@ -1170,6 +1187,15 @@ export default function Dashboard({
                       </div>
                     </dl>
                     <div className="receipt-actions">
+                      <a
+                        className="button dark compact"
+                        href={`https://sepolia.etherscan.io/tx/${r.transactionHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink size={15} />
+                        View on Etherscan
+                      </a>
                       <button
                         className="button light compact"
                         onClick={() => download(r)}
