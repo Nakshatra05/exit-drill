@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   try {
     release = acquire(request);
     const body = requestSchema.parse(await request.json());
-    const evidence = await getEvidence(body.evidenceMode);
+    const evidence = await getEvidence(body.evidenceMode, body.evidenceBlock);
     return Response.json(await rehearse(body.input, evidence));
   } catch (e) {
     return Response.json(

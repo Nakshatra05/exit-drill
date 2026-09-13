@@ -32,6 +32,24 @@ export async function provisionWallet(request: Request) {
   const idempotencyKey = createHash("sha256")
     .update(`exit-drill-v1:${userId}:${executor}`)
     .digest("hex");
+  const existing = await client.wallets().list({
+    user_id: userId,
+    chain_type: "ethereum",
+    external_id: idempotencyKey,
+  });
+  if (existing.data.length) {
+    const wallet = existing.data[0];
+    if (!wallet.policy_ids?.length)
+      throw new Error(
+        "Treasury policy was removed. Reattach its policy before continuing.",
+      );
+    return {
+      id: wallet.id,
+      address: wallet.address,
+      policyId: wallet.policy_ids[0],
+      chainId: 11155111,
+    };
+  }
   const approveAbi = parseAbi([
     "function approve(address spender,uint256 amount) returns(bool)",
   ]);
@@ -71,7 +89,9 @@ export async function provisionWallet(request: Request) {
             field: "function_name",
             operator: "eq",
             value: "execute",
-            abi: parseAbi(["function execute((uint256 amountIn,uint256 minOut,uint24 fee,address recipient,uint256 deadline,uint256 nonce) p) returns (uint256)"]),
+            abi: parseAbi([
+              "function execute((uint256 amountIn,uint256 minOut,uint24 fee,address recipient,uint256 deadline,uint256 nonce) p) returns (uint256)",
+            ]),
           },
         ],
       },
@@ -162,14 +182,13 @@ export async function provisionWallet(request: Request) {
       },
     ],
   });
-  const wallet = await client
-    .wallets()
-    .create({
-      chain_type: "ethereum",
-      owner: { user_id: userId },
-      policy_ids: [policy.id],
-      idempotency_key: `wallet-${idempotencyKey}`,
-    });
+  const wallet = await client.wallets().create({
+    chain_type: "ethereum",
+    owner: { user_id: userId },
+    policy_ids: [policy.id],
+    external_id: idempotencyKey,
+    idempotency_key: `wallet-${idempotencyKey}`,
+  });
   return {
     id: wallet.id,
     address: wallet.address,
@@ -179,9 +198,15 @@ export async function provisionWallet(request: Request) {
 }
 export async function authorizeWallet(request: Request, walletId: string) {
   const auth = await authenticate(request);
-  const wallets = await auth.client
-    .wallets()
-    .list({ user_id: auth.userId, chain_type: "ethereum" });
+  const { executor } = liveConfig();
+  const externalId = createHash("sha256")
+    .update(`exit-drill-v1:${auth.userId}:${executor}`)
+    .digest("hex");
+  const wallets = await auth.client.wallets().list({
+    user_id: auth.userId,
+    chain_type: "ethereum",
+    external_id: externalId,
+  });
   const wallet = wallets.data.find((w) => w.id === walletId);
   if (!wallet)
     throw new Error("Wallet does not belong to this authenticated user.");
@@ -189,4 +214,3 @@ export async function authorizeWallet(request: Request, walletId: string) {
     throw new Error("Wallet has no enforced Privy policy.");
   return { ...auth, wallet };
 }
-

@@ -10,3 +10,4 @@ playwright-report/
 artifacts/
 .local/
 out/
+.local-audit.json

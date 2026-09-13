@@ -81,13 +81,26 @@ export async function createSandbox(evidence?: Evidence) {
   const transport = custom({
     async request(args) {
       try {
-        return await provider.request(args as Parameters<typeof provider.request>[0]);
+        return await provider.request(
+          args as Parameters<typeof provider.request>[0],
+        );
       } catch (error) {
         // Ganache reports eth_call reverts as -32000. Normalize only EVM
         // reverts with return data so viem can decode the contract error.
-        const failure = error as { code?: number; data?: unknown; message?: string };
-        if (args.method === "eth_call" && typeof failure.data === "string" && failure.message?.includes("revert")) {
-          throw Object.assign(new Error(failure.message), {code: 3, data: failure.data});
+        const failure = error as {
+          code?: number;
+          data?: unknown;
+          message?: string;
+        };
+        if (
+          args.method === "eth_call" &&
+          typeof failure.data === "string" &&
+          failure.message?.includes("revert")
+        ) {
+          throw Object.assign(new Error(failure.message), {
+            code: 3,
+            data: failure.data,
+          });
         }
         throw error;
       }

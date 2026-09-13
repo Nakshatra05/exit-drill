@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useDialog } from "./use-dialog";
+import { balanceDeltaUsdc } from "@/lib/receipt-math";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -93,7 +95,20 @@ export default function Dashboard() {
     [approved, setApproved] = useState(false),
     [rejected, setRejected] = useState(false),
     [mobileNav, setMobileNav] = useState(false);
+  useDialog(policyOpen || settingsOpen, () => {
+    setPolicyOpen(false);
+    setSettingsOpen(false);
+  });
+  useEffect(() => {
+    if (!approved) return;
+    const timer = setTimeout(() => {
+      setApproved(false);
+      setNotice("Approval expired. Review a fresh exit policy.");
+    }, 600000);
+    return () => clearTimeout(timer);
+  }, [approved]);
   const refresh = async (nextMode = mode) => {
+    if (busy) return;
     setBusy("evidence");
     setError("");
     try {
@@ -1047,9 +1062,10 @@ export default function Dashboard() {
                         </dt>
                         <dd>
                           {money(
-                            (Number(r.balances.afterUsdc) -
-                              Number(r.balances.beforeUsdc)) /
-                              1e6,
+                            balanceDeltaUsdc(
+                              r.balances.beforeUsdc,
+                              r.balances.afterUsdc,
+                            ),
                             2,
                           )}{" "}
                           USDC
@@ -1312,4 +1328,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

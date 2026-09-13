@@ -1,8 +1,8 @@
 import "server-only";
 import { referenceEvidence } from "./reference";
 import type { Evidence, PoolEvidence } from "./types";
-const query = `query TreasuryEvidence { _meta { block { number timestamp } deployment hasIndexingErrors } pools(first: 30, orderBy: totalValueLockedUSD, orderDirection: desc, where: { feeTier_in: [500,3000] }) { id feeTier liquidity sqrtPrice tick totalValueLockedUSD token0 { symbol decimals } token1 { symbol decimals } poolDayData(first:7,orderBy:date,orderDirection:desc) {date tvlUSD volumeUSD} } }`;
-export async function getEvidence(mode: string): Promise<Evidence> {
+const query = `query TreasuryEvidence { _meta { block { number timestamp } deployment hasIndexingErrors } pools(first: 2, orderBy: totalValueLockedUSD, orderDirection: desc, where: { feeTier_in: [500,3000], token0: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", token1: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" }) { id feeTier liquidity sqrtPrice tick totalValueLockedUSD token0 { symbol decimals } token1 { symbol decimals } poolDayData(first:7,orderBy:date,orderDirection:desc) {date tvlUSD volumeUSD} } }`;
+export async function getEvidence(mode: string, block = 0): Promise<Evidence> {
   if (mode !== "graph") return referenceEvidence();
   const key = process.env.GRAPH_API_KEY,
     id = process.env.GRAPH_SUBGRAPH_ID;
@@ -10,12 +10,19 @@ export async function getEvidence(mode: string): Promise<Evidence> {
     throw new Error(
       "Live Graph data needs GRAPH_API_KEY and GRAPH_SUBGRAPH_ID. Reference mode remains available.",
     );
+  if (!Number.isSafeInteger(block) || block < 0 || block > 2147483647)
+    throw new Error("Invalid evidence block.");
+  const pinnedQuery = block
+    ? query
+        .replace("_meta {", `_meta(block: {number: ${block}}) {`)
+        .replace("pools(first:", `pools(block: {number: ${block}}, first:`)
+    : query;
   const res = await fetch(
     `https://gateway.thegraph.com/api/${encodeURIComponent(key)}/subgraphs/id/${encodeURIComponent(id)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query: pinnedQuery }),
       cache: "no-store",
       signal: AbortSignal.timeout(15000),
     },
@@ -40,9 +47,13 @@ export async function getEvidence(mode: string): Promise<Evidence> {
     (p: { token0: { symbol: string }; token1: { symbol: string } }) =>
       [p.token0.symbol, p.token1.symbol].sort().join("/") === "USDC/WETH",
   );
-  if (raw.length === 0)
+  if (
+    ![500, 3000].every((fee) =>
+      raw.some((p: { feeTier: string }) => Number(p.feeTier) === fee),
+    )
+  )
     throw new Error(
-      "No WETH/USDC pools in this deployment’s top liquidity pools. Choose an Ethereum Uniswap v3 deployment.",
+      "Both WETH/USDC fee tiers are required. Choose an Ethereum Uniswap v3 deployment.",
     );
   const pools: PoolEvidence[] = raw.map(
     (p: {

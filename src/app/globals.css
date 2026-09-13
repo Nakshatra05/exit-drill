@@ -1516,11 +1516,13 @@ td:first-child {
 }
 @media (max-width: 720px) {
   .sidebar {
+    visibility: hidden;
     transform: translateX(-100%);
     width: 245px;
     transition: transform 0.2s;
   }
   .sidebar.mobile-open {
+    visibility: visible;
     transform: translateX(0);
     box-shadow: 7px 0 0 #0004;
   }
@@ -1617,11 +1619,17 @@ td:first-child {
     font-size: 7px;
   }
   .steps {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 3px;
   }
+  .step {
+    flex-direction: column;
+    text-align: center;
+    font-size: 7px;
+  }
   .step > svg {
-    width: 10px;
-    margin-left: 0;
+    display: none;
   }
   .dashboard-grid {
     gap: 20px;

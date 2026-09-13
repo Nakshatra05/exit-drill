@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "contracts:compile": "tsx scripts/compile-contracts.ts",
     "chain:local": "ganache --chain.chainId 31337 --server.port 8545 --wallet.deterministic",
-    "test:contracts": "tsx scripts/test-contracts.ts"
+    "test:contracts": "tsx scripts/test-contracts.ts",
+    "test:smoke": "tsx scripts/smoke.ts"
   },
   "engines": {
     "node": ">=22"
@@ -41,5 +42,8 @@
     "typescript": "^5.9.3",
     "vitest": "^5.0.0"
   },
-  "type": "module"
+  "type": "module",
+  "optionalDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.2.8"
+  }
 }

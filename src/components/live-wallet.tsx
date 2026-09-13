@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useDialog } from "./use-dialog";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http, type Hex } from "viem";
 import { sepolia } from "viem/chains";
@@ -19,6 +20,7 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
       deadline: number;
     } | null>(null),
     [hash, setHash] = useState("");
+  useDialog(open, () => setOpen(false));
   const api = async (path: string, body: unknown) => {
     const token = await getAccessToken();
     const response = await fetch(path, {
