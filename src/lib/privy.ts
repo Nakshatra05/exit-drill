@@ -62,7 +62,7 @@ export async function provisionWallet(request: Request) {
     idempotency_key: `policy-${idempotencyKey}`,
     rules: [
       {
-        name: "Execute only through the guarded treasury contract",
+        name: "Execute through guarded treasury",
         method: "eth_sendTransaction",
         action: "ALLOW",
         conditions: [
@@ -96,7 +96,7 @@ export async function provisionWallet(request: Request) {
         ],
       },
       {
-        name: "Approve only the fixed executor with a bounded test-token allowance",
+        name: "Approve bounded executor allowance",
         method: "eth_sendTransaction",
         action: "ALLOW",
         conditions: [

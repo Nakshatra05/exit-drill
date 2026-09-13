@@ -1,0 +1,14 @@
+{
+  "chainId": 11155111,
+  "weth": "0x92369a8527557955e6a81e98c090d2d3db043758",
+  "usdc": "0x372c7acdf91a62b9a8957b2298a50bcb0515961a",
+  "factory": "0xa04e6334129316b23907d96510ee0f07f4e20b70",
+  "router": "0x13897d338d0a19cb7722ab5e311e01998b4b45bd",
+  "seeder": "0xc2d3165dd9b66d7902b4c58b9db3b4ffc15347ec",
+  "executor": "0x9b3404a56b0137690e54eb97cd57ae864af7cd47",
+  "pools": {
+    "500": "0xD864aD4D777a2B6334C3DeF83Fc7A53C62C1112C",
+    "3000": "0xa703297926C96247d882EE6fB54A73f1506Cd2b1"
+  },
+  "seeded": true
+}

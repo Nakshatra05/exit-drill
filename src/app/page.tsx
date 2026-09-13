@@ -37,7 +37,7 @@ export default function Page() {
                 Run your first drill <ArrowUpRight size={21} />
               </Link>
               <Link className={s.textLink} href="/docs">
-                Read the docs <ArrowRight size={17} />
+                Read the guide <ArrowRight size={17} />
               </Link>
             </div>
             <div className={s.heroNote}>
@@ -122,13 +122,13 @@ export default function Page() {
           <div>
             Uniswap <small>Execution</small>
           </div>
-          <Link href="/docs#integrations">
-            Integration status <ArrowUpRight size={16} />
+          <Link href="/docs#market-data">
+            How it works <ArrowUpRight size={16} />
           </Link>
         </div>
         <section className={s.section} id="how-it-works">
           <div className={s.sectionHeading}>
-            <span className={s.eyebrow}>01 / FROM BALANCE TO CERTAINTY</span>
+            <span className={s.eyebrow}>01 / FROM BALANCE TO READINESS</span>
             <h2>
               Rehearse the bad day.
               <br />
@@ -228,18 +228,18 @@ export default function Page() {
             </div>
             <div>
               <p>
-                The public demo runs real Uniswap v3 bytecode with valueless
-                tokens in isolated pools. Its market data is a labeled reference
-                fixture.
+                Rehearse with current Ethereum market data or start with a
+                repeatable example. Compare stressed outcomes without moving
+                your wallet’s funds.
               </p>
               <p>
-                Live Graph data and Privy signing need your provider
-                credentials. Public Sepolia execution needs deployed test
-                contracts. Every mode is explicit—so you know what you’re
-                looking at.
+                Ready to try a wallet transaction? Use the Sepolia test network
+                with valueless test tokens, review a fresh quote, and keep a
+                verified receipt. Rehearsal results are estimates, never
+                guaranteed mainnet fills.
               </p>
-              <Link className={s.textLink} href="/docs#integrations">
-                See what’s live and what needs setup <ArrowRight size={17} />
+              <Link className={s.textLink} href="/docs#market-data">
+                Find the right workflow for you <ArrowRight size={17} />
               </Link>
             </div>
           </div>

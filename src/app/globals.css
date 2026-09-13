@@ -1787,3 +1787,15 @@ td:first-child {
     transition: none !important;
   }
 }
+.wallet-help {
+  margin: 18px 0;
+  padding: 16px;
+  border: 2px solid var(--ink, #20221f);
+  background: #f4f6e9;
+}
+.wallet-help p {
+  margin: 0 0 12px;
+}
+.wallet-help .docs-link {
+  margin: 12px 0;
+}

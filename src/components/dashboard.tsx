@@ -32,13 +32,7 @@ import {
   Database,
   Menu,
 } from "lucide-react";
-import type {
-  DrillInput,
-  DrillResult,
-  Evidence,
-  IntegrationStatus,
-  Receipt,
-} from "@/lib/types";
+import type { DrillInput, DrillResult, Evidence, Receipt } from "@/lib/types";
 const LiveWallet = dynamic(() => import("./live-wallet"), {
   ssr: false,
   loading: () => <span>Loading wallet…</span>,
@@ -78,12 +72,15 @@ async function request<T>(url: string, body?: unknown): Promise<T> {
   if (!r.ok) throw new Error(j.error ?? "Request failed. Please retry.");
   return j;
 }
-export default function Dashboard() {
+export default function Dashboard({
+  defaultEvidenceMode = "reference",
+}: {
+  defaultEvidenceMode?: "reference" | "graph";
+}) {
   const [view, setView] = useState("Overview"),
     [input, setInput] = useState(initialInput),
     [evidence, setEvidence] = useState<Evidence | null>(null),
-    [status, setStatus] = useState<IntegrationStatus | null>(null),
-    [mode, setMode] = useState<"reference" | "graph">("reference"),
+    [mode, setMode] = useState<"reference" | "graph">(defaultEvidenceMode),
     [result, setResult] = useState<DrillResult | null>(null),
     [receipt, setReceipt] = useState<Receipt | null>(null),
     [receipts, setReceipts] = useState<Receipt[]>([]),
@@ -126,10 +123,7 @@ export default function Dashboard() {
     }
   };
   useEffect(() => {
-    void refresh("reference");
-    void request<IntegrationStatus>("/api/status")
-      .then(setStatus)
-      .catch(() => {});
+    void refresh(defaultEvidenceMode);
     try {
       const saved = JSON.parse(
         localStorage.getItem("exit-drill-receipts-v1") ?? "[]",
@@ -202,15 +196,13 @@ export default function Dashboard() {
           localStorage.setItem("exit-drill-receipts-v1", JSON.stringify(next));
         } catch {}
         setNotice(
-          "Exit settled in the sandbox EVM. Receipt reconciled against token balances.",
+          "Rehearsal settled. Your receipt matches the tokens received.",
         );
       }
     } catch (e) {
       if (violation && (e as Error).message.includes("WrongRecipient")) {
         setRejected(true);
-        setNotice(
-          "Attack blocked by ExitExecutor: WrongRecipient. No tokens moved.",
-        );
+        setNotice("Recipient change blocked. No tokens moved.");
       } else setError((e as Error).message);
     } finally {
       setBusy("");
@@ -256,9 +248,9 @@ export default function Dashboard() {
           </span>
         </a>
         <div className="workspace">
-          <span className="workspace-avatar">N</span>
+          <span className="workspace-avatar">↗</span>
           <span>
-            Northstar Treasury<small>Demo workspace</small>
+            My treasury<small>Personal workspace</small>
           </span>
           <ChevronDown size={16} />
         </div>
@@ -290,14 +282,14 @@ export default function Dashboard() {
             Documentation <ArrowUpRight size={13} />
           </a>
           <div className="network-card">
-            <span className="tiny-label">EXECUTION NETWORK</span>
+            <span className="tiny-label">PRACTICE WITH CONFIDENCE</span>
             <strong>
               <span className="status-dot" />
-              Isolated test EVM
+              Rehearsal mode
             </strong>
-            <small>Real contracts. Valueless tokens.</small>
+            <small>Virtual funds. No wallet transfers.</small>
             <button onClick={() => setSettingsOpen(true)}>
-              Integration status <ArrowUpRight size={14} />
+              Market data <ArrowUpRight size={14} />
             </button>
           </div>
           <a
@@ -310,11 +302,11 @@ export default function Dashboard() {
             Open source <ExternalLink size={13} />
           </a>
           <div className="profile">
-            <span className="profile-icon">NT</span>
+            <span className="profile-icon">ED</span>
             <span>
-              Northstar team<small>Finance workspace</small>
+              Your workspace<small>Saved on this browser</small>
             </span>
-            <span className="demo-tag">DEMO</span>
+            <span className="demo-tag">BETA</span>
           </div>
         </div>
       </aside>
@@ -335,7 +327,7 @@ export default function Dashboard() {
           <div className="header-actions">
             <button className="mode-pill" onClick={() => setSettingsOpen(true)}>
               <span className="status-dot" />
-              {mode === "graph" ? "Live evidence" : "Reference mode"}
+              {mode === "graph" ? "Market snapshot" : "Example scenario"}
               <ChevronDown size={13} />
             </button>
             {process.env.NEXT_PUBLIC_PRIVY_APP_ID ? (
@@ -395,25 +387,23 @@ export default function Dashboard() {
                 size={16}
                 className={busy === "evidence" ? "spin" : ""}
               />
-              Refresh evidence
+              Refresh market data
             </button>
           </section>
           <div className="context-strip">
             <span>
               <FlaskConical size={16} />
               <strong>
-                {mode === "graph"
-                  ? "LIVE DATA + SYNTHETIC REHEARSAL"
-                  : "SANDBOX WORKSPACE"}
+                {mode === "graph" ? "MARKET REHEARSAL" : "EXAMPLE REHEARSAL"}
               </strong>
             </span>
             <p>
               {mode === "graph"
-                ? "Graph data calibrates isolated pools. This is not a mainnet fork."
-                : "Explore the complete flow with reference liquidity and real Uniswap v3 bytecode."}
+                ? "Current prices inform this model. Results are estimates, not guaranteed market fills."
+                : "Practice an exit with a repeatable scenario. Your wallet balance stays untouched."}
             </p>
             <button onClick={() => setSettingsOpen(true)}>
-              View setup <ArrowRight size={15} />
+              Change data <ArrowRight size={15} />
             </button>
           </div>
           {error && (
@@ -865,7 +855,7 @@ export default function Dashboard() {
                   </h3>
                   <p>
                     {receipt
-                      ? `Sandbox transaction ${short(receipt.transactionHash)}`
+                      ? `Rehearsal transaction ${short(receipt.transactionHash)}`
                       : approved
                         ? "The executor enforces recipient, amount, expiry and minimum output."
                         : "Review the amount, minimum received, and permitted destination before execution."}
@@ -896,7 +886,7 @@ export default function Dashboard() {
                         ) : (
                           <Zap size={17} />
                         )}
-                        Execute sandbox exit
+                        Complete rehearsal
                       </button>
                     </>
                   )}
@@ -928,13 +918,14 @@ export default function Dashboard() {
               <div className="panel-heading">
                 <div>
                   <span className="section-index">AUTHORIZATION BOUNDARY</span>
-                  <h2>Trust the limits, not the agent.</h2>
+                  <h2>Every exit has boundaries.</h2>
                 </div>
                 <ShieldCheck size={26} />
               </div>
               <p className="panel-description">
-                The sandbox uses onchain guards. Privy policies add a separate
-                signing boundary when your app is configured.
+                Every rehearsal checks the recipient, amount and minimum
+                received. Your testnet wallet adds signing limits before a
+                transaction is sent.
               </p>
               <div className="policy-rule">
                 <LockKeyhole />
@@ -966,16 +957,14 @@ export default function Dashboard() {
               <div className="policy-rule">
                 <ShieldCheck />
                 <div>
-                  <strong>Privy signing policy</strong>
+                  <strong>Restricted wallet actions</strong>
                   <p>
-                    {status?.privy
-                      ? "App configured. Provision and attach the documented policy before live execution."
-                      : "Requires your Privy app credentials. No Privy authorization is simulated."}
+                    Your testnet treasury can request test tokens, authorize the
+                    fixed exit contract, and execute a bounded swap. Other
+                    transfers are blocked by its signing policy.
                   </p>
                 </div>
-                <span className="outline-tag">
-                  {status?.privy ? "CONFIGURED" : "SETUP NEEDED"}
-                </span>
+                <span className="outline-tag">TESTNET WALLET</span>
               </div>
               <button
                 className="button dark"
@@ -999,16 +988,16 @@ export default function Dashboard() {
               </div>
               <p className="panel-description">
                 Saved in this browser. Export JSON for a portable audit record.
-                Sandbox transaction hashes are local EVM records, not
-                public-chain transactions.
+                Rehearsal receipts record practice exits. Sepolia receipts link
+                to public testnet transactions.
               </p>
               {receipts.length === 0 ? (
                 <div className="empty-receipts">
                   <FileCheck2 size={45} />
                   <h3>Your first receipt starts with a drill.</h3>
                   <p>
-                    Run a stress test, approve its policy, and execute a sandbox
-                    exit.
+                    Run a stress test, approve its limits, and complete a
+                    rehearsal.
                   </p>
                   <button
                     className="button dark"
@@ -1023,7 +1012,8 @@ export default function Dashboard() {
                     <div className="receipt-top">
                       <span className="best-route">
                         <CheckCheck size={14} />
-                        CONFIRMED · {r.mode.toUpperCase()}
+                        CONFIRMED ·{" "}
+                        {r.mode === "sandbox" ? "REHEARSAL" : "SEPOLIA TESTNET"}
                       </span>
                       <span>{new Date(r.createdAt).toLocaleString()}</span>
                     </div>
@@ -1054,8 +1044,8 @@ export default function Dashboard() {
                         <dt>Policy enforcement</dt>
                         <dd>
                           {r.policy.engine === "contract"
-                            ? "ExitExecutor contract"
-                            : "Privy + contract"}
+                            ? "Rehearsal limits"
+                            : "Wallet + exit limits"}
                         </dd>
                       </div>
                       <div>
@@ -1114,7 +1104,7 @@ export default function Dashboard() {
             <span>
               ETHOnline 2026 <span className="footer-divider">·</span>
               <button onClick={() => setSettingsOpen(true)}>
-                Evidence & integrations <ArrowUpRight size={13} />
+                Market data <ArrowUpRight size={13} />
               </button>
             </span>
           </footer>
@@ -1141,7 +1131,7 @@ export default function Dashboard() {
             </div>
             <h2 id="policy-title">Make the limits explicit.</h2>
             <p>
-              Approval applies to this sandbox plan only. Changing any scenario
+              Approval applies to this rehearsal only. Changing any scenario
               input clears approval.
             </p>
             <dl className="policy-details">
@@ -1201,7 +1191,8 @@ export default function Dashboard() {
             )}
             <div className="modal-note">
               <FlaskConical size={17} />
-              Sandbox contract approval. This is not a Privy signature.
+              Rehearsal approval only. This does not authorize a wallet
+              transaction.
             </div>
             <button
               className="button dark full-width"
@@ -1209,12 +1200,12 @@ export default function Dashboard() {
                 setApproved(true);
                 setPolicyOpen(false);
                 setNotice(
-                  "Sandbox exit policy approved. You can now test a rejection or execute.",
+                  "Rehearsal limits approved. Test a rejection or complete your exit.",
                 );
               }}
             >
               <ShieldCheck size={18} />
-              Approve sandbox policy
+              Approve rehearsal limits
             </button>
           </section>
         </div>
@@ -1229,102 +1220,64 @@ export default function Dashboard() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-heading">
-              <span className="eyebrow">EVIDENCE & INTEGRATIONS</span>
+              <span className="eyebrow">YOUR SCENARIO</span>
               <button
                 className="icon-button"
-                aria-label="Close integrations"
+                aria-label="Close market data choices"
                 onClick={() => setSettingsOpen(false)}
               >
                 <X />
               </button>
             </div>
-            <h2 id="setup-title">Know what is live.</h2>
+            <h2 id="setup-title">Choose your market data.</h2>
             <p>
-              Every source and execution environment is explicitly identified.
+              Both choices run a rehearsal with virtual funds. Changing data
+              clears your current result and approval.
             </p>
-            <div className="integration-row">
-              <span className="integration-symbol">G</span>
+            <div className="policy-rule">
+              <Database />
               <div>
-                <strong>The Graph</strong>
+                <strong>Current market snapshot</strong>
                 <p>
-                  {status?.graph
-                    ? "Provider credentials configured. Switch to query live pool data."
-                    : "Set GRAPH_API_KEY and GRAPH_SUBGRAPH_ID on the server."}
+                  Use recent Ethereum WETH/USDC prices and liquidity to
+                  calibrate your scenario. Refresh after ten minutes.
                 </p>
               </div>
-              <span className="outline-tag">
-                {status?.graph ? "READY" : "NOT CONNECTED"}
-              </span>
             </div>
-            <div className="integration-row">
-              <span className="integration-symbol">P</span>
+            <div className="policy-rule">
+              <FlaskConical />
               <div>
-                <strong>Privy</strong>
+                <strong>Example scenario</strong>
                 <p>
-                  {status?.privy
-                    ? "App credentials present. Wallet login available."
-                    : "Add a Privy app ID and secret; configure allowed domains."}
+                  Start at $2,500 per WETH with fixed liquidity. Useful for
+                  learning the workflow and comparing repeatable drills.
                 </p>
               </div>
-              <span className="outline-tag">
-                {status?.privy ? "CONFIGURED" : "NOT CONNECTED"}
-              </span>
-            </div>
-            <div className="integration-row">
-              <span className="integration-symbol">U</span>
-              <div>
-                <strong>Uniswap v3</strong>
-                <p>
-                  Official factory, pool and router bytecode in the isolated
-                  EVM.
-                </p>
-              </div>
-              <span className="best-route">SANDBOX</span>
-            </div>
-            <div className="integration-row">
-              <span className="integration-symbol">
-                <ShieldCheck size={20} />
-              </span>
-              <div>
-                <strong>ExitExecutor · Sepolia</strong>
-                <p>
-                  {status?.executor
-                    ? "Contract address configured. Use live wallet controls."
-                    : "Deploy the contract and configure its address to enable public testnet exits."}
-                </p>
-              </div>
-              <span className="outline-tag">
-                {status?.executor ? "CONFIGURED" : "NOT DEPLOYED"}
-              </span>
             </div>
             <div className="mode-buttons">
               <button
-                className={`button ${mode === "reference" ? "dark" : "light"}`}
-                onClick={() => {
-                  setSettingsOpen(false);
-                  void refresh("reference");
-                }}
-              >
-                Reference evidence
-              </button>
-              <button
-                className="button light"
-                disabled={!status?.graph}
+                className="button dark"
+                disabled={!!busy}
                 onClick={() => {
                   setSettingsOpen(false);
                   void refresh("graph");
                 }}
               >
-                Use live Graph data <ArrowUpRight size={16} />
+                Use market snapshot <ArrowUpRight size={16} />
+              </button>
+              <button
+                className="button light"
+                disabled={!!busy}
+                onClick={() => {
+                  setSettingsOpen(false);
+                  void refresh("reference");
+                }}
+              >
+                Try example
               </button>
             </div>
-            <a
-              className="docs-link"
-              href="/docs#configuration"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Configuration guide <ExternalLink size={14} />
+            <a className="docs-link" href="/docs#market-data">
+              Understanding market data <ArrowRight size={14} />
             </a>
           </section>
         </div>

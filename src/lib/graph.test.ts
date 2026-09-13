@@ -15,23 +15,21 @@ const pools = [500, 3000].map((fee) => ({
 function setup(age = 0, errors = false) {
   vi.stubEnv("GRAPH_API_KEY", "test");
   vi.stubEnv("GRAPH_SUBGRAPH_ID", "deployment");
-  const fetchMock = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({
-        data: {
-          _meta: {
-            block: {
-              number: 25000000,
-              timestamp: Math.floor(Date.now() / 1000) - age,
-            },
-            deployment: "test",
-            hasIndexingErrors: errors,
+  const fetchMock = vi.fn().mockResolvedValue(
+    Response.json({
+      data: {
+        _meta: {
+          block: {
+            number: 25000000,
+            timestamp: Math.floor(Date.now() / 1000) - age,
           },
-          pools,
+          deployment: "test",
+          hasIndexingErrors: errors,
         },
-      }),
-    );
+        pools,
+      },
+    }),
+  );
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
@@ -54,14 +52,14 @@ describe("Graph evidence boundary", () => {
   });
   it("rejects stale evidence instead of falling back to a fixture", async () => {
     setup(700);
-    await expect(getEvidence("graph")).rejects.toThrow("stale");
+    await expect(getEvidence("graph")).rejects.toThrow("expired");
   });
   it("rejects indexing errors", async () => {
     setup(0, true);
-    await expect(getEvidence("graph")).rejects.toThrow("indexing errors");
+    await expect(getEvidence("graph")).rejects.toThrow("could not be verified");
   });
   it("fails closed when credentials are absent", async () => {
     vi.stubEnv("GRAPH_API_KEY", "");
-    await expect(getEvidence("graph")).rejects.toThrow("GRAPH_API_KEY");
+    await expect(getEvidence("graph")).rejects.toThrow("unavailable");
   });
 });

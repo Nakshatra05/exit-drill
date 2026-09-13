@@ -8,7 +8,7 @@ export async function getEvidence(mode: string, block = 0): Promise<Evidence> {
     id = process.env.GRAPH_SUBGRAPH_ID;
   if (!key || !id)
     throw new Error(
-      "Live Graph data needs GRAPH_API_KEY and GRAPH_SUBGRAPH_ID. Reference mode remains available.",
+      "Market data is unavailable right now. Try an example scenario or retry shortly.",
     );
   if (!Number.isSafeInteger(block) || block < 0 || block > 2147483647)
     throw new Error("Invalid evidence block.");
@@ -18,30 +18,70 @@ export async function getEvidence(mode: string, block = 0): Promise<Evidence> {
         .replace("pools(first:", `pools(block: {number: ${block}}, first:`)
     : query;
   const res = await fetch(
-    `https://gateway.thegraph.com/api/${encodeURIComponent(key)}/subgraphs/id/${encodeURIComponent(id)}`,
+    `https://gateway.thegraph.com/api/subgraphs/id/${encodeURIComponent(id)}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
       body: JSON.stringify({ query: pinnedQuery }),
       cache: "no-store",
       signal: AbortSignal.timeout(15000),
     },
   );
-  if (!res.ok) throw new Error(`Graph provider returned HTTP ${res.status}.`);
+  if (!res.ok)
+    throw new Error(
+      "Market data is temporarily unavailable. Please retry shortly.",
+    );
   const json = await res.json();
   if (json.errors?.length)
     throw new Error(
-      "Graph query failed. Verify the deployment uses the Uniswap v3 schema and API access is enabled.",
+      "We couldn’t load this market snapshot. Refresh market data and try again.",
     );
   const data = json.data;
-  if (!data?._meta?.block?.timestamp || data._meta.hasIndexingErrors)
+  if (!data?._meta?.block?.number || data._meta.hasIndexingErrors)
     throw new Error(
-      "Graph source is missing freshness metadata or has indexing errors.",
+      "This market snapshot could not be verified. Please refresh market data.",
     );
-  const age = Date.now() / 1000 - data._meta.block.timestamp;
+  if (block && data._meta.block.number !== block)
+    throw new Error(
+      "The market snapshot changed. Refresh market data and run a new drill.",
+    );
+  // Graph Node can omit timestamps for historical _meta queries. Verify the
+  // exact pinned Ethereum block over RPC rather than substituting latest data.
+  let timestamp: number = data._meta.block.timestamp;
+  if (!timestamp && block) {
+    const response = await fetch(
+      process.env.ETHEREUM_RPC_URL || "https://ethereum-rpc.publicnode.com",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "eth_getBlockByNumber",
+          params: [`0x${block.toString(16)}`, false],
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      },
+    );
+    const canonical = await response.json();
+    if (!response.ok || Number(canonical.result?.number) !== block)
+      throw new Error(
+        "This market snapshot could not be verified. Please refresh market data.",
+      );
+    timestamp = Number(canonical.result.timestamp);
+  }
+  if (!Number.isSafeInteger(timestamp) || timestamp <= 0)
+    throw new Error(
+      "This market snapshot could not be verified. Please refresh market data.",
+    );
+  const age = Date.now() / 1000 - timestamp;
   if (age > 600 || age < -60)
     throw new Error(
-      "Graph source is stale or its timestamp is invalid. Planning is blocked.",
+      "Your market snapshot has expired. Refresh market data and run a new drill.",
     );
   const raw = data.pools.filter(
     (p: { token0: { symbol: string }; token1: { symbol: string } }) =>
@@ -53,7 +93,7 @@ export async function getEvidence(mode: string, block = 0): Promise<Evidence> {
     )
   )
     throw new Error(
-      "Both WETH/USDC fee tiers are required. Choose an Ethereum Uniswap v3 deployment.",
+      "We couldn’t compare both routes. Refresh market data or try an example scenario.",
     );
   const pools: PoolEvidence[] = raw.map(
     (p: {
@@ -85,7 +125,7 @@ export async function getEvidence(mode: string, block = 0): Promise<Evidence> {
     source: "The Graph · Uniswap v3",
     chain: "Ethereum · read only",
     block: data._meta.block.number,
-    timestamp: new Date(data._meta.block.timestamp * 1000).toISOString(),
+    timestamp: new Date(timestamp * 1000).toISOString(),
     fetchedAt: new Date().toISOString(),
     deployment: data._meta.deployment,
     pools,
