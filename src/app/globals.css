@@ -1796,6 +1796,110 @@ td:first-child {
 .wallet-help p {
   margin: 0 0 12px;
 }
+.next-step-card {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 2px solid #20221f;
+  box-shadow: 5px 5px 0 #20221f;
+  background: #eaf4d0;
+}
+.chart-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 36px;
+  text-align: center;
+  line-height: 1.7;
+  color: #60655c;
+}
+.exit-amount-label {
+  display: grid;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.risk-options {
+  border-top: 1px solid #bbb;
+  padding-top: 20px;
+  margin-top: 24px;
+}
+.risk-options summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.risk-options > p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #60655c;
+}
+.risk-options .scenario-label {
+  margin-top: 20px;
+}
+.analysis-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 12px;
+}
+.next-step-card h2 {
+  margin: 12px 0 8px;
+  font-size: 24px;
+}
+.next-step-card p {
+  margin: 0;
+  max-width: 680px;
+  line-height: 1.6;
+}
+.next-step-card > button {
+  flex-shrink: 0;
+}
+.treasury-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.treasury-steps li {
+  padding: 8px 10px;
+  font-size: 11px;
+  border: 1px solid #bbb;
+  color: #60655c;
+}
+.treasury-steps .active {
+  background: #c6f14a;
+  color: #20221f;
+  border: 2px solid #20221f;
+  font-weight: 700;
+}
+.treasury-steps .done {
+  background: #eaf4d0;
+  color: #20221f;
+}
+.wallet-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #eaf4d0;
+  line-height: 1.5;
+}
+@media (max-width: 720px) {
+  .next-step-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
 .account-strip {
   display: grid;
   grid-template-columns: 1.5fr 1fr 1fr 1fr;

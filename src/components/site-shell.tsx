@@ -37,7 +37,7 @@ export function SiteFooter() {
         <p>Treasury readiness. Before it matters.</p>
       </div>
       <nav aria-label="Footer navigation">
-        <Link href="/app">Stress lab</Link>
+        <Link href="/app">Exit planner</Link>
         <Link href="/docs">Documentation</Link>
         <a
           href="https://github.com/Nakshatra05/exit-drill"

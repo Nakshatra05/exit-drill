@@ -45,64 +45,55 @@ export default function Page() {
           </div>
           <div
             className={s.heroVisual}
-            aria-label="Illustrative analysis: 30 WETH, 25 percent price shock, 54,896 dollars executable cash and 5,104 dollars payroll shortfall"
+            aria-label="Treasury workflow: connect, analyze, settle"
           >
             <div className={s.visualTop}>
               <span>
-                <Activity size={17} /> EXIT READINESS / 001
+                <Activity size={17} /> YOUR EXIT WORKSPACE
               </span>
-              <span className={s.sampleTag}>ILLUSTRATIVE ANALYSIS</span>
+              <span className={s.sampleTag}>SEPOLIA</span>
             </div>
-            <div className={s.visualPosition}>
+            <div className={s.heroFlow}>
               <div>
-                <small>TREASURY POSITION</small>
-                <strong>
-                  30.00 <span>WETH</span>
-                </strong>
+                <span>01</span>
+                <section>
+                  <small>CONNECT & FUND</small>
+                  <h3>Your treasury. Your balances.</h3>
+                  <p>
+                    Sign in to load your WETH, USDC, and network-fee balance
+                    from Sepolia.
+                  </p>
+                </section>
               </div>
-              <span className={s.shock}>
-                −25%<small>PRICE SHOCK</small>
-              </span>
-            </div>
-            <div className={s.chart}>
-              <div className={s.chartGuide}>
-                <span>$75k</span>
-                <span>$50k</span>
-                <span>$25k</span>
+              <div>
+                <span>02</span>
+                <section>
+                  <small>ANALYZE & REVIEW</small>
+                  <h3>Set your exit conditions.</h3>
+                  <p>
+                    Choose an amount and cash target. Compare stress estimates
+                    using current market data.
+                  </p>
+                </section>
               </div>
-              <div className={s.barGroup}>
-                <div className={s.barOne}>
-                  <strong>$72,957</strong>
-                </div>
-                <small>Normal conditions</small>
-              </div>
-              <div className={s.barGroup}>
-                <div className={s.barTwo}>
-                  <strong>$54,896</strong>
-                </div>
-                <small>After shock</small>
-              </div>
-              <div className={s.payrollLine}>
-                <span>$60k PAYROLL</span>
+              <div>
+                <span>03</span>
+                <section>
+                  <small>CONFIRM & RECONCILE</small>
+                  <h3>Follow the settlement.</h3>
+                  <p>
+                    Review a fresh quote, confirm the exit, and open its
+                    verified transaction receipt.
+                  </p>
+                </section>
               </div>
             </div>
             <div className={s.visualBottom}>
-              <div>
-                <small>PAYROLL SHORTFALL</small>
-                <strong>$5,104</strong>
-              </div>
+              <ShieldCheck size={28} />
               <span>
-                Find the gap.
+                Actual balances.
                 <br />
-                <b>Before it finds you.</b>
-              </span>
-            </div>
-            <div className={s.proofStamp}>
-              <ShieldCheck size={22} />
-              <span>
-                CLEAR EXIT LIMITS
-                <br />
-                <b>Verified settlement receipts</b>
+                <b>Clear decisions. Onchain receipts.</b>
               </span>
             </div>
           </div>

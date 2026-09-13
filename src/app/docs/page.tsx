@@ -57,20 +57,27 @@ export default function DocsPage() {
               </li>
               <li>
                 Open <strong>Treasury</strong> to see your address and balances.
-                Use <strong>Add funds</strong> for funding instructions. Your
-                treasury needs Sepolia ETH for network fees and WETH to sell.
+                Follow the funding step: send Sepolia ETH to this address for
+                network fees (0.003 ETH is a suggested starting amount). The
+                treasury is separate from your sign-in wallet. Balances refresh
+                automatically while the treasury is open.
               </li>
               <li>
-                Enter the amount you want to analyze, your USDC obligation, and
-                a price shock. Select <strong>Run stress test</strong>.
+                Enter how much WETH you want to use and select{" "}
+                <strong>Request test WETH</strong>. Wait for its onchain
+                confirmation, then select{" "}
+                <strong>Continue to exit planner</strong>. Amounts are never
+                prefilled for you. If you already hold WETH, choose{" "}
+                <strong>Use available WETH</strong> or enter a smaller amount.
               </li>
               <li>
-                Compare estimated proceeds, payroll coverage, and the available
-                routes. Select <strong>Review exit</strong> to carry the amount
-                and selected fee tier into your treasury.
+                Choose the WETH amount to sell from your available balance and
+                select <strong>Review exit</strong>. You can optionally expand
+                the risk analysis section to enter a cash target and price
+                shock. Risk analysis is not required to trade.
               </li>
               <li>
-                If needed, select <strong>Allow WETH</strong> to set a bounded
+                If needed, select <strong>Approve WETH</strong> to set a bounded
                 spending limit. Then select <strong>Get exit quote</strong>.
               </li>
               <li>
@@ -104,9 +111,10 @@ export default function DocsPage() {
             <h3>Add funds</h3>
             <p>
               Copy your treasury address and send Sepolia ETH to cover network
-              fees. Under <strong>Add funds</strong>, you can request the
-              selected amount of test WETH from the faucet. The faucet request
-              is an onchain transaction and also uses network fees.
+              fees. When your WETH balance is too low, the treasury shows a
+              button to request the selected amount of test WETH. Use{" "}
+              <strong>Add funds</strong> to top up later. The faucet request is
+              an onchain transaction and also uses network fees.
             </p>
             <p>
               Balances are read from Sepolia. Use{" "}

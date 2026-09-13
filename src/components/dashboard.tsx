@@ -45,9 +45,9 @@ const money = (v: number, d = 0) =>
   }).format(v);
 const short = (s: string) => `${s.slice(0, 8)}…${s.slice(-6)}`;
 const initialInput: DrillInput = {
-  amountEth: 30,
-  payrollUsdc: 60000,
-  shockPercent: 25,
+  amountEth: 0,
+  payrollUsdc: 0,
+  shockPercent: 0,
   slippageBps: 100,
 };
 const stages = [
@@ -134,7 +134,16 @@ export default function Dashboard({
     setReceipt(null);
   };
   const run = async () => {
-    if (busy) return;
+    if (
+      busy ||
+      !walletSnapshot ||
+      input.amountEth < 0.01 ||
+      input.amountEth > 100 ||
+      input.amountEth > Number(walletSnapshot.weth) ||
+      input.payrollUsdc < 1 ||
+      input.payrollUsdc > 500000
+    )
+      return;
     setBusy("simulation");
     setError("");
     setResult(null);
@@ -168,6 +177,24 @@ export default function Dashboard({
   const totalTvl = evidence?.pools.reduce((a, p) => a + p.tvlUsd, 0) ?? 0;
   const coverage = result?.coveragePercent;
   const currentStage = receipt ? 4 : result ? 2 : evidence ? 1 : 0;
+  const needsFunding =
+    !!walletSnapshot &&
+    (Number(walletSnapshot.eth) <= 0 || Number(walletSnapshot.weth) < 0.01);
+  const validExit =
+    !!walletSnapshot &&
+    !needsFunding &&
+    input.amountEth >= 0.01 &&
+    input.amountEth <= Math.min(100, Number(walletSnapshot.weth));
+  const validAnalysis =
+    validExit && input.payrollUsdc >= 1 && input.payrollUsdc <= 500000;
+  const chartMaximum = result
+    ? Math.max(result.baselineUsdc, input.payrollUsdc)
+    : 0;
+  useEffect(() => {
+    setInput(initialInput);
+    setResult(null);
+    setReceipt(null);
+  }, [walletSnapshot?.address]);
   const visibleReceipts = receipts.filter(
     (r) =>
       walletSnapshot &&
@@ -175,7 +202,7 @@ export default function Dashboard({
   );
   const nav = [
     { label: "Overview", icon: LayoutDashboard },
-    { label: "Stress lab", icon: FlaskConical },
+    { label: "Exit planner", icon: FlaskConical },
     { label: "Exit limits", icon: ShieldCheck },
     { label: "Receipts", icon: FileCheck2 },
   ];
@@ -274,6 +301,13 @@ export default function Dashboard({
               <LiveWallet
                 exitRequest={walletRequest}
                 onSnapshot={setWalletSnapshot}
+                onAnalyze={(amount) => {
+                  update("amountEth", amount);
+                  setView("Exit planner");
+                  setNotice(
+                    "Treasury ready. Choose the amount to sell, then review your Sepolia quote.",
+                  );
+                }}
                 onReceipt={(r) => {
                   const next = [
                     r,
@@ -315,9 +349,9 @@ export default function Dashboard({
               </div>
               <h1>
                 {view === "Overview"
-                  ? "Ready for the unexpected."
-                  : view === "Stress lab"
-                    ? "Pressure-test your exit."
+                  ? "Your treasury. Ready to move."
+                  : view === "Exit planner"
+                    ? "Plan your next exit."
                     : view === "Exit limits"
                       ? "Your limits. Enforced."
                       : "Every exit. Accounted for."}
@@ -394,28 +428,93 @@ export default function Dashboard({
           )}
           {view !== "Receipts" && view !== "Exit limits" && (
             <>
+              <section className="next-step-card" aria-label="Your next step">
+                <div>
+                  <span className="eyebrow">
+                    {!walletSnapshot
+                      ? "01 / SIGN IN"
+                      : needsFunding
+                        ? "02 / FUND TREASURY"
+                        : "03 / SELL WETH FOR USDC"}
+                  </span>
+                  <h2>
+                    {!walletSnapshot
+                      ? "Start with your Sepolia treasury."
+                      : needsFunding
+                        ? "Fund your treasury before your exit."
+                        : "Choose an amount. Review your quote."}
+                  </h2>
+                  <p>
+                    {!walletSnapshot
+                      ? "Sign in to see your actual balances, fund your treasury, and sell WETH for USDC on Sepolia."
+                      : needsFunding
+                        ? "Your treasury needs Sepolia ETH for fees and test WETH to sell. Open it for the funding steps."
+                        : "Select WETH from your available balance. Approve the spending limit, check your USDC quote, then confirm. Risk analysis is optional."}
+                  </p>
+                </div>
+                <button
+                  className="button dark"
+                  disabled={!!busy}
+                  onClick={() => {
+                    if (!walletSnapshot || needsFunding || validExit)
+                      setWalletRequest({
+                        id: Date.now(),
+                        amount: input.amountEth,
+                        fee: (result?.selectedFee ?? 500) as 500 | 3000,
+                        intent: validExit ? "trade" : "fund",
+                      });
+                    else {
+                      document.getElementById("analysis-form")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                      document
+                        .getElementById("analysis-form")
+                        ?.focus({ preventScroll: true });
+                    }
+                  }}
+                >
+                  {!walletSnapshot
+                    ? "Set up treasury"
+                    : needsFunding
+                      ? "Fund treasury"
+                      : validExit
+                        ? "Review exit"
+                        : "Choose exit amount"}
+                  <ArrowRight size={16} />
+                </button>
+              </section>
               <section className="metrics" aria-label="Treasury metrics">
                 <article className="metric">
                   <div className="metric-label">
                     AMOUNT TO ANALYZE <Wallet size={17} />
                   </div>
                   <div className="metric-number">
-                    {input.amountEth.toFixed(2)} <span>WETH</span>
+                    {input.amountEth > 0
+                      ? input.amountEth.toLocaleString(undefined, {
+                          maximumFractionDigits: 8,
+                        })
+                      : "—"}{" "}
+                    <span>WETH</span>
                   </div>
                   <div className="metric-foot">
-                    <span className="mini-chip">01 ASSET</span>Scenario input
+                    {input.amountEth > 0
+                      ? "Your selected exit amount"
+                      : "Choose an amount below"}
                   </div>
                 </article>
                 <article className="metric">
                   <div className="metric-label">
-                    PAYROLL OBLIGATION <ArrowDownLeft size={18} />
+                    CASH TARGET <ArrowDownLeft size={18} />
                   </div>
                   <div className="metric-number">
-                    {money(input.payrollUsdc)}
+                    {input.payrollUsdc > 0 ? money(input.payrollUsdc, 2) : "—"}
                   </div>
                   <div className="metric-foot">
                     <span className="muted-square" />
-                    Denominated in USDC
+                    {input.payrollUsdc > 0
+                      ? "Your entered USDC target"
+                      : "Enter your cash requirement"}
                   </div>
                 </article>
                 <article className="metric lime">
@@ -434,14 +533,14 @@ export default function Dashboard({
                       </>
                     ) : (
                       <>
-                        Run a drill to calculate <ArrowRight size={14} />
+                        Optional risk analysis <ArrowRight size={14} />
                       </>
                     )}
                   </div>
                 </article>
                 <article className="metric">
                   <div className="metric-label">
-                    PAYROLL COVERAGE <ShieldCheck size={18} />
+                    TARGET COVERAGE <ShieldCheck size={18} />
                   </div>
                   <div
                     className={`metric-number ${coverage !== undefined && coverage < 100 ? "negative" : ""}`}
@@ -450,7 +549,7 @@ export default function Dashboard({
                   </div>
                   <div className="metric-foot">
                     {coverage === undefined ? (
-                      "Awaiting stress test"
+                      "No risk analysis yet"
                     ) : coverage >= 100 ? (
                       <>
                         <span className="status-dot" />
@@ -465,64 +564,106 @@ export default function Dashboard({
                   </div>
                 </article>
               </section>
-              <section className="workflow">
-                <span className="tiny-label">THE EXIT PATH</span>
-                <div className="steps">
-                  {stages.map((s, i) => (
-                    <div
-                      key={s}
-                      className={`step ${i < currentStage ? "complete" : ""} ${i === currentStage ? "current" : ""}`}
-                    >
-                      <span>
-                        {i < currentStage ? (
-                          <Check size={13} />
-                        ) : (
-                          String(i + 1).padStart(2, "0")
-                        )}
-                      </span>
-                      {s}
-                      {i < 4 && <ArrowRight size={14} />}
-                    </div>
-                  ))}
-                </div>
-              </section>
               <div className="dashboard-grid">
-                <section className="panel stress-panel">
+                <section
+                  className="panel stress-panel"
+                  id="analysis-form"
+                  tabIndex={-1}
+                >
                   <div className="panel-heading">
                     <div>
-                      <span className="section-index">01 / REHEARSE</span>
-                      <h2>How much can you get out?</h2>
+                      <span className="section-index">YOUR NEXT TRADE</span>
+                      <h2>Sell WETH for USDC</h2>
                     </div>
                     <FlaskConical size={22} />
                   </div>
-                  <div className="form-grid">
-                    <label>
-                      Position to exit{" "}
-                      <span className="input-wrap">
-                        <input
-                          aria-label="Position to exit"
-                          type="number"
-                          min="0.01"
-                          max="100"
-                          step="0.1"
-                          value={input.amountEth}
-                          onChange={(e) =>
-                            update("amountEth", Number(e.target.value))
+                  <label className="exit-amount-label">
+                    WETH to sell
+                    <span className="input-wrap">
+                      <input
+                        aria-label="Position to exit"
+                        type="number"
+                        min="0.01"
+                        max="100"
+                        step="any"
+                        placeholder="Enter amount"
+                        disabled={!walletSnapshot || needsFunding}
+                        value={input.amountEth || ""}
+                        onChange={(e) =>
+                          update("amountEth", Number(e.target.value))
+                        }
+                      />
+                      <b>WETH</b>
+                    </span>
+                  </label>
+                  <div className="analysis-help">
+                    {walletSnapshot ? (
+                      <>
+                        <span>Available: {walletSnapshot.weth} WETH</span>
+                        <button
+                          className="button light compact"
+                          disabled={needsFunding || !!busy}
+                          onClick={() =>
+                            update(
+                              "amountEth",
+                              Math.min(100, Number(walletSnapshot.weth)),
+                            )
                           }
-                        />
-                        <b>WETH</b>
+                        >
+                          Use available balance
+                        </button>
+                      </>
+                    ) : (
+                      <span>
+                        Sign in and fund your treasury to choose an exit amount.
                       </span>
-                    </label>
-                    <label>
-                      Cash obligation{" "}
+                    )}
+                  </div>
+                  {walletSnapshot &&
+                    input.amountEth > Number(walletSnapshot.weth) && (
+                      <p className="wallet-validation">
+                        The exit amount exceeds your available WETH. Reduce it
+                        or fund your treasury.
+                      </p>
+                    )}
+                  <button
+                    className="button dark full-width"
+                    disabled={!!busy || !validExit}
+                    onClick={() =>
+                      setWalletRequest({
+                        id: Date.now(),
+                        amount: input.amountEth,
+                        fee: (result?.selectedFee ?? 500) as 500 | 3000,
+                        intent: "trade",
+                      })
+                    }
+                  >
+                    Review exit <ArrowRight size={16} />
+                  </button>
+                  <p className="wallet-disclosure">
+                    Your quote comes from Sepolia pools. You will review the
+                    minimum received before confirming any swap.
+                  </p>
+                  <details className="risk-options">
+                    <summary>
+                      Optional: analyze price risk & cash coverage
+                    </summary>
+                    <p>
+                      Use current Ethereum market data to estimate how a price
+                      shock could affect an exit. This estimate is separate from
+                      your Sepolia trade quote.
+                    </p>
+                    <label className="exit-amount-label">
+                      Your cash target
                       <span className="input-wrap">
                         <input
                           aria-label="Cash obligation"
                           type="number"
                           min="1"
                           max="500000"
-                          step="1000"
-                          value={input.payrollUsdc}
+                          step="any"
+                          placeholder="Enter cash target"
+                          value={input.payrollUsdc || ""}
                           onChange={(e) =>
                             update("payrollUsdc", Number(e.target.value))
                           }
@@ -530,70 +671,49 @@ export default function Dashboard({
                         <b>USDC</b>
                       </span>
                     </label>
-                  </div>
-                  <div className="scenario-label">
-                    <label htmlFor="shock">Market price shock</label>
-                    <span className="shock-value">−{input.shockPercent}%</span>
-                  </div>
-                  <input
-                    id="shock"
-                    className="range"
-                    type="range"
-                    min="0"
-                    max="70"
-                    step="5"
-                    value={input.shockPercent}
-                    onChange={(e) =>
-                      update("shockPercent", Number(e.target.value))
-                    }
-                  />
-                  <div className="range-labels">
-                    <span>0% · Normal</span>
-                    <span>35% · Severe</span>
-                    <span>70% · Extreme</span>
-                  </div>
-                  <div className="presets">
-                    {[
-                      { n: "Market wobble", v: 10 },
-                      { n: "Liquidity crunch", v: 25 },
-                      { n: "Black swan", v: 50 },
-                    ].map((p) => (
-                      <button
-                        key={p.n}
-                        className={input.shockPercent === p.v ? "selected" : ""}
-                        onClick={() => update("shockPercent", p.v)}
-                      >
-                        {p.n}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="simulation-note">
-                    <Zap size={17} />
-                    <span>
-                      Competing sells move the pool price. Your exit runs after
-                      the shock against actual Uniswap v3 contracts.
-                    </span>
-                  </div>
-                  <button
-                    className="button dark run-button"
-                    disabled={
-                      !!busy ||
-                      !evidence ||
-                      input.amountEth <= 0 ||
-                      input.payrollUsdc <= 0
-                    }
-                    onClick={() => void run()}
-                  >
-                    {busy === "simulation" ? (
-                      <LoaderCircle className="spin" size={18} />
-                    ) : (
-                      <Play size={17} />
-                    )}{" "}
-                    {busy === "simulation"
-                      ? "Calculating stressed output…"
-                      : "Run stress test"}
-                    <span>{busy === "simulation" ? "Please wait" : "↗"}</span>
-                  </button>
+                    <div className="scenario-label">
+                      <label htmlFor="shock">Price shock to analyze</label>
+                      <span className="shock-value">
+                        −{input.shockPercent}%
+                      </span>
+                    </div>
+                    <input
+                      id="shock"
+                      className="range"
+                      aria-label="Market price shock"
+                      type="range"
+                      min="0"
+                      max="70"
+                      step="5"
+                      value={input.shockPercent}
+                      onChange={(e) =>
+                        update("shockPercent", Number(e.target.value))
+                      }
+                    />
+                    <div className="range-labels">
+                      <span>0% · Unchanged</span>
+                      <span>35% decline</span>
+                      <span>70% decline</span>
+                    </div>
+                    <button
+                      className="button light full-width"
+                      disabled={!!busy || !evidence || !validAnalysis}
+                      onClick={() => void run()}
+                    >
+                      {busy === "simulation" ? (
+                        <LoaderCircle className="spin" size={16} />
+                      ) : (
+                        <Activity size={16} />
+                      )}{" "}
+                      {busy === "simulation" ? "Analyzing…" : "Analyze risk"}
+                    </button>
+                    {!validAnalysis && (
+                      <p className="wallet-disclosure">
+                        Choose an available WETH amount and enter a cash target
+                        to analyze coverage.
+                      </p>
+                    )}
+                  </details>
                 </section>
                 <section className="panel outcome-panel">
                   <div className="panel-heading">
@@ -623,78 +743,78 @@ export default function Dashboard({
                     aria-label={
                       result
                         ? `Baseline ${money(result.baselineUsdc)}, stressed ${money(result.amountOutUsdc)}, obligation ${money(input.payrollUsdc)}`
-                        : "Run a stress test to compare executable cash"
+                        : "Run optional risk analysis to compare cash coverage"
                     }
                   >
-                    <div className="chart-grid">
-                      <span>
-                        {money(
-                          Math.max(
-                            result?.baselineUsdc ?? input.amountEth * 2500,
-                            input.payrollUsdc,
-                          ) * 1.2,
-                        )}
-                      </span>
-                      <span>
-                        {money(
-                          Math.max(
-                            result?.baselineUsdc ?? input.amountEth * 2500,
-                            input.payrollUsdc,
-                          ) * 0.8,
-                        )}
-                      </span>
-                      <span>
-                        {money(
-                          Math.max(
-                            result?.baselineUsdc ?? input.amountEth * 2500,
-                            input.payrollUsdc,
-                          ) * 0.4,
-                        )}
-                      </span>
-                      <span>$0</span>
-                    </div>
-                    <div className="bars">
-                      <div className="bar-column">
-                        <strong>
-                          {result
-                            ? money(result.baselineUsdc)
-                            : "Awaiting drill"}
-                        </strong>
-                        <div
-                          className="bar baseline"
-                          style={{
-                            height: result
-                              ? `${Math.min(95, (result.baselineUsdc / Math.max(result?.baselineUsdc ?? input.amountEth * 2500, input.payrollUsdc) / 1.2) * 100)}%`
-                              : "4%",
-                          }}
-                        />
-                        <span>Before shock</span>
+                    {result ? (
+                      <>
+                        <div className="chart-grid">
+                          <span>
+                            {money(
+                              Math.max(chartMaximum, input.payrollUsdc) * 1.2,
+                            )}
+                          </span>
+                          <span>
+                            {money(
+                              Math.max(chartMaximum, input.payrollUsdc) * 0.8,
+                            )}
+                          </span>
+                          <span>
+                            {money(
+                              Math.max(chartMaximum, input.payrollUsdc) * 0.4,
+                            )}
+                          </span>
+                          <span>$0</span>
+                        </div>
+                        <div className="bars">
+                          <div className="bar-column">
+                            <strong>
+                              {result
+                                ? money(result.baselineUsdc)
+                                : "No analysis yet"}
+                            </strong>
+                            <div
+                              className="bar baseline"
+                              style={{
+                                height: result
+                                  ? `${Math.min(95, (result.baselineUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`
+                                  : "4%",
+                              }}
+                            />
+                            <span>Before shock</span>
+                          </div>
+                          <div className="bar-column">
+                            <strong>
+                              {result
+                                ? money(result.amountOutUsdc)
+                                : "No analysis yet"}
+                            </strong>
+                            <div
+                              className="bar stressed"
+                              style={{
+                                height: result
+                                  ? `${Math.min(95, (result.amountOutUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`
+                                  : "4%",
+                              }}
+                            />
+                            <span>After shock</span>
+                          </div>
+                          <div
+                            className="target-line"
+                            style={{
+                              bottom: `${Math.min(90, (input.payrollUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`,
+                            }}
+                          >
+                            <span>Cash target</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="chart-empty">
+                        Your results will appear here after you enter your exit
+                        details and run an analysis.
                       </div>
-                      <div className="bar-column">
-                        <strong>
-                          {result
-                            ? money(result.amountOutUsdc)
-                            : "Awaiting drill"}
-                        </strong>
-                        <div
-                          className="bar stressed"
-                          style={{
-                            height: result
-                              ? `${Math.min(95, (result.amountOutUsdc / Math.max(result?.baselineUsdc ?? input.amountEth * 2500, input.payrollUsdc) / 1.2) * 100)}%`
-                              : "4%",
-                          }}
-                        />
-                        <span>After shock</span>
-                      </div>
-                      <div
-                        className="target-line"
-                        style={{
-                          bottom: `${Math.min(90, (input.payrollUsdc / Math.max(result?.baselineUsdc ?? input.amountEth * 2500, input.payrollUsdc) / 1.2) * 100)}%`,
-                        }}
-                      >
-                        <span>Cash target</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                   <div className="outcome-summary">
                     <span
@@ -817,7 +937,7 @@ export default function Dashboard({
                   <h3>
                     {receipt
                       ? "Exit settled. Receipt verified."
-                      : "Turn your analysis into an exit."}
+                      : "Settle WETH into USDC."}
                   </h3>
                   <p>
                     Review a fresh Sepolia quote for this amount and route.
@@ -827,13 +947,13 @@ export default function Dashboard({
                 <div className="execution-actions">
                   <button
                     className="button lime-button"
-                    disabled={!result || !!busy}
+                    disabled={!validExit || !!busy}
                     onClick={() =>
-                      result &&
                       setWalletRequest({
+                        intent: "trade",
                         id: Date.now(),
                         amount: input.amountEth,
-                        fee: result.selectedFee as 500 | 3000,
+                        fee: (result?.selectedFee ?? 500) as 500 | 3000,
                       })
                     }
                   >
@@ -898,9 +1018,9 @@ export default function Dashboard({
               </div>
               <button
                 className="button dark"
-                onClick={() => setView("Stress lab")}
+                onClick={() => setView("Exit planner")}
               >
-                Analyze an exit <ArrowRight size={17} />
+                Plan an exit <ArrowRight size={17} />
               </button>
             </section>
           )}
@@ -927,14 +1047,14 @@ export default function Dashboard({
                   <FileCheck2 size={45} />
                   <h3>Your confirmed exits appear here.</h3>
                   <p>
-                    Analyze an amount, review a live quote, and confirm your
+                    Choose an amount, review a live quote, and confirm your
                     exit.
                   </p>
                   <button
                     className="button dark"
-                    onClick={() => setView("Stress lab")}
+                    onClick={() => setView("Exit planner")}
                   >
-                    Analyze your first exit <ArrowRight size={17} />
+                    Plan your first exit <ArrowRight size={17} />
                   </button>
                 </div>
               ) : (
@@ -944,7 +1064,7 @@ export default function Dashboard({
                       <span className="best-route">
                         <CheckCheck size={14} />
                         CONFIRMED ·{" "}
-                        {r.mode === "sandbox" ? "REHEARSAL" : "SEPOLIA TESTNET"}
+                        SEPOLIA TESTNET
                       </span>
                       <span>{new Date(r.createdAt).toLocaleString()}</span>
                     </div>

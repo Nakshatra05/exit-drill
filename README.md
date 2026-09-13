@@ -2,14 +2,14 @@
 
 **Know what you can exit. Set the limits. Prove the outcome.**
 
-A treasury stress lab for ETHOnline 2026. A token balance is not a cash guarantee: compare executable USDC under market shocks, approve explicit limits, execute through a bounded contract, and reconcile the outcome.
+A Sepolia treasury exit application for ETHOnline 2026. Fund a managed treasury, choose WETH to sell, approve a bounded spending limit, review a live USDC quote, and verify the confirmed settlement. Optional risk analysis estimates cash coverage under market shocks.
 
 ## Use the app
 
-Visit [the landing page](https://exit-drill.vercel.app), [the stress lab](https://exit-drill.vercel.app/app), or [the documentation](https://exit-drill.vercel.app/docs).
+Visit [the landing page](https://exit-drill.vercel.app), [the exit planner](https://exit-drill.vercel.app/app), or [the documentation](https://exit-drill.vercel.app/docs).
 
-1. Sign in and open your managed Sepolia treasury. Fund its address with Sepolia ETH for network fees and request test WETH under **Add funds**.
-2. Analyze an amount against fresh Ethereum market data. Compare estimated USDC proceeds and payroll coverage under stress.
+1. Follow **Your next step**: sign in, open the managed Sepolia treasury, and fund its displayed address with Sepolia ETH for network fees. Enter how much test WETH you want and request it using the treasury's funding button.
+2. Select **Continue to exit planner**. Choose available WETH or enter a smaller amount. Inputs start blank; no position, cash obligation, or chart price is assumed. Optional risk analysis accepts a cash target and price shock without blocking trading.
 3. Select **Review exit** to carry the amount and fee tier into your treasury. Live balances and bounded spending allowance determine the next action.
 4. Review a fresh Sepolia quote, its minimum output and expiry, then **Confirm exit**.
 5. Inspect the confirmed settlement receipt and export JSON. Pending transactions can be recovered without resubmitting them.

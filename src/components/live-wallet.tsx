@@ -16,6 +16,7 @@ import { useDialog } from "./use-dialog";
 import type { Receipt } from "@/lib/types";
 import type { ExitRequest, WalletSnapshot } from "@/lib/wallet-types";
 type Props = {
+  onAnalyze: (amount: number) => void;
   onReceipt: (receipt: Receipt) => void;
   onSnapshot: (snapshot: WalletSnapshot | null) => void;
   exitRequest: ExitRequest | null;
@@ -30,13 +31,18 @@ const rpc = createPublicClient({
     retryCount: 1,
   }),
 });
-function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
+function WalletControl({
+  onReceipt,
+  onSnapshot,
+  onAnalyze,
+  exitRequest,
+}: Props) {
   const { ready, authenticated, login, logout, getAccessToken, user } =
     usePrivy();
   const [open, setOpen] = useState(false),
     [wallet, setWallet] = useState<Treasury | null>(null),
     [snapshot, setSnapshot] = useState<WalletSnapshot | null>(null),
-    [amount, setAmount] = useState(0.01),
+    [amount, setAmount] = useState(0),
     [fee, setFee] = useState<500 | 3000>(3000),
     [quote, setQuote] = useState<Quote | null>(null),
     [busy, setBusy] = useState(""),
@@ -44,7 +50,8 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
     [pending, setPending] = useState<Pending | null>(null),
     [hash, setHash] = useState(""),
     [now, setNow] = useState(Date.now()),
-    [funding, setFunding] = useState(false);
+    [funding, setFunding] = useState(false),
+    [intent, setIntent] = useState<"fund" | "trade">("fund");
   const reopen = useRef(false),
     handled = useRef<number | null>(null),
     identity = useRef(user?.id);
@@ -76,6 +83,7 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
       handled.current = exitRequest.id;
       setAmount(exitRequest.amount);
       setFee(exitRequest.fee);
+      setIntent(exitRequest.intent ?? "trade");
       setQuote(null);
       setOpen(true);
     }
@@ -161,6 +169,7 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
     if (p.action === "execute") {
       onReceipt(await api("/api/reconcile", { hash: p.hash }));
       setMessage("Exit confirmed. Your settlement receipt is ready.");
+      setOpen(false);
     } else
       setMessage(
         p.action === "mint"
@@ -170,10 +179,14 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
     persist(null);
     if (wallet) await balances(wallet);
   };
-  const invalid = !Number.isFinite(amount) || amount < 0.001 || amount > 100;
+  const invalid = !Number.isFinite(amount) || amount < 0.01 || amount > 100;
   const insufficient = !!snapshot && amount > Number(snapshot.weth);
+  const needsTokens =
+    !!snapshot && (Number(snapshot.weth) === 0 || insufficient);
   const needsAllowance = !!snapshot && amount > Number(snapshot.allowance);
   const expired = !!quote && now >= quote.deadline * 1000;
+  const hasGas = !!snapshot && Number(snapshot.eth) > 0;
+  const funded = !!snapshot && hasGas && !insufficient && !invalid;
   const act = async (action: string) => {
     if (!wallet || busy || pending || invalid) return;
     if (action === "execute" && (!quote || expired)) return;
@@ -217,12 +230,21 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
     await balances(wallet);
     setBusy("");
   };
+  useEffect(() => {
+    if (!open || !wallet || busy) return;
+    const timer = setInterval(() => void balances(wallet), 15000);
+    return () => clearInterval(timer);
+  }, [open, wallet?.id, busy]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <button
         className="button dark compact"
         disabled={!ready}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setIntent("fund");
+          setQuote(null);
+          setOpen(true);
+        }}
       >
         <Wallet size={15} />
         {authenticated ? "Treasury" : "Sign in"}
@@ -246,10 +268,67 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
               </button>
             </div>
             <h2 id="wallet-title">
-              {authenticated
-                ? "Review your exit."
-                : "Your treasury, connected."}
+              {!authenticated
+                ? "First, sign in."
+                : !wallet
+                  ? "Opening your treasury…"
+                  : !snapshot
+                    ? "Load your treasury balances."
+                    : !hasGas
+                      ? "1. Add ETH for network fees."
+                      : needsTokens
+                        ? "2. Get WETH to sell."
+                        : intent === "fund"
+                          ? "Your treasury is ready."
+                          : quote
+                            ? "4. Review and confirm."
+                            : needsAllowance
+                              ? "3. Approve your spending limit."
+                              : "4. Get your exit quote."}
             </h2>
+            <ol className="treasury-steps" aria-label="Exit progress">
+              <li className={authenticated ? "done" : "active"}>Sign in</li>
+              <li className={funded ? "done" : authenticated ? "active" : ""}>
+                Fund
+              </li>
+              <li
+                className={
+                  funded && intent === "fund"
+                    ? "active"
+                    : intent === "trade"
+                      ? "done"
+                      : ""
+                }
+              >
+                Choose amount
+              </li>
+              <li className={funded && intent === "trade" ? "active" : ""}>
+                Review & settle
+              </li>
+            </ol>
+            {message && (
+              <div role="status" className="alert notice">
+                {message}
+              </div>
+            )}
+            {busy && (
+              <p className="wallet-progress" role="status">
+                <LoaderCircle className="spin" size={16} />
+                {busy === "setup"
+                  ? "Opening your treasury…"
+                  : busy === "mint"
+                    ? "Requesting WETH. Waiting for Sepolia confirmation…"
+                    : busy === "approve"
+                      ? "Approving your spending limit. Waiting for confirmation…"
+                      : busy === "execute"
+                        ? "Submitting your exit. Your receipt will open after confirmation…"
+                        : busy === "balance"
+                          ? "Refreshing balances…"
+                          : busy === "recover"
+                            ? "Checking your submitted transaction…"
+                            : "Getting a fresh Sepolia quote…"}
+              </p>
+            )}
             {!authenticated ? (
               <>
                 <p>
@@ -360,14 +439,18 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
                         Add funds
                       </button>
                     </div>
-                    {(!snapshot || funding || Number(snapshot.eth) === 0) && (
+                    {(!snapshot || funding || !hasGas || needsTokens) && (
                       <div className="wallet-help">
                         <p>
                           {!snapshot
                             ? "Balances could not be loaded. Refresh before reviewing an exit."
-                            : "Send Sepolia ETH to the treasury address above to cover network fees. Use only Sepolia assets."}
+                            : !hasGas
+                              ? "Copy the treasury address above and send 0.003 Sepolia ETH to it from your wallet. This is a suggested starting amount for fees, not the WETH you sell. After sending, select Refresh balances."
+                              : needsTokens
+                                ? "Your treasury has ETH for fees. Enter the amount of test WETH you want below, then request it. After confirmation, continue to the exit planner."
+                                : "To top up network fees, send Sepolia ETH to the treasury address above."}
                         </p>
-                        {funding && (
+                        {(funding || needsTokens) && hasGas && (
                           <>
                             <p>
                               The amount below can be requested as WETH from the
@@ -375,7 +458,7 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
                               transaction and uses network fees.
                             </p>
                             <button
-                              className="button light"
+                              className="button dark full-width"
                               disabled={
                                 !!busy ||
                                 !!pending ||
@@ -385,7 +468,9 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
                               }
                               onClick={() => void act("mint")}
                             >
-                              Request {invalid ? "" : amount} test WETH
+                              {invalid
+                                ? "Enter a WETH amount below"
+                                : `Request ${amount} test WETH`}
                             </button>
                           </>
                         )}
@@ -397,10 +482,11 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
                         <input
                           aria-label="WETH to sell"
                           type="number"
-                          min=".001"
+                          min=".01"
                           max="100"
-                          step=".01"
-                          value={amount}
+                          step="any"
+                          placeholder="Enter amount"
+                          value={amount || ""}
                           disabled={!!busy || !!pending}
                           onChange={(e) => {
                             setAmount(Number(e.target.value));
@@ -408,23 +494,37 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
                           }}
                         />
                       </label>
-                      <label>
-                        Pool fee
-                        <select
-                          aria-label="Pool fee"
-                          value={fee}
-                          disabled={!!busy || !!pending}
-                          onChange={(e) => {
-                            setFee(Number(e.target.value) as 500 | 3000);
-                            setQuote(null);
-                          }}
-                        >
-                          <option value={500}>0.05%</option>
-                          <option value={3000}>0.30%</option>
-                        </select>
-                      </label>
+                      {intent === "trade" && (
+                        <label>
+                          Pool fee
+                          <select
+                            aria-label="Pool fee"
+                            value={fee}
+                            disabled={!!busy || !!pending}
+                            onChange={(e) => {
+                              setFee(Number(e.target.value) as 500 | 3000);
+                              setQuote(null);
+                            }}
+                          >
+                            <option value={500}>0.05%</option>
+                            <option value={3000}>0.30%</option>
+                          </select>
+                        </label>
+                      )}
                     </div>
-                    {insufficient && (
+                    {snapshot && Number(snapshot.weth) > 0 && (
+                      <button
+                        className="button light compact"
+                        disabled={!!busy || !!pending}
+                        onClick={() => {
+                          setAmount(Math.min(100, Number(snapshot.weth)));
+                          setQuote(null);
+                        }}
+                      >
+                        Use available WETH
+                      </button>
+                    )}
+                    {insufficient && !hasGas && (
                       <p className="wallet-validation">
                         Your treasury has {Number(snapshot!.weth).toFixed(4)}{" "}
                         WETH. Reduce the amount or add funds.
@@ -432,88 +532,107 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
                     )}
                     {invalid && (
                       <p className="wallet-validation">
-                        Enter an amount between 0.001 and 100 WETH.
+                        Enter an amount between 0.01 and 100 WETH.
                       </p>
                     )}
-                    {!quote ? (
+                    {funded && intent === "fund" && (
                       <button
                         className="button dark full-width"
-                        disabled={
-                          !!busy ||
-                          !!pending ||
-                          invalid ||
-                          insufficient ||
-                          !snapshot ||
-                          Number(snapshot.eth) === 0
-                        }
-                        onClick={() =>
-                          void act(needsAllowance ? "approve" : "quote")
-                        }
+                        disabled={!!busy || !!pending || invalid}
+                        onClick={() => {
+                          setOpen(false);
+                          onAnalyze(amount);
+                        }}
                       >
-                        {busy ? (
-                          <LoaderCircle size={16} className="spin" />
-                        ) : null}
-                        {needsAllowance
-                          ? `Allow ${invalid ? "" : amount} WETH`
-                          : "Get exit quote"}
+                        Continue to exit planner <ArrowRight size={16} />
                       </button>
-                    ) : (
-                      <div className="quote-review">
-                        <dl className="policy-details">
-                          <div>
-                            <dt>You sell</dt>
-                            <dd>{amount} WETH</dd>
-                          </div>
-                          <div>
-                            <dt>Expected received</dt>
-                            <dd>
-                              {(Number(quote.amountOut) / 1e6).toFixed(4)} USDC
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>Minimum received · 1% slippage</dt>
-                            <dd>
-                              {(
-                                Number((BigInt(quote.amountOut) * 99n) / 100n) /
-                                1e6
-                              ).toFixed(4)}{" "}
-                              USDC
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>Destination</dt>
-                            <dd>Your treasury</dd>
-                          </div>
-                          <div>
-                            <dt>Quote expires</dt>
-                            <dd>
-                              {expired
-                                ? "Expired"
-                                : `${Math.max(0, Math.ceil((quote.deadline * 1000 - now) / 1000))} seconds`}
-                            </dd>
-                          </div>
-                        </dl>
+                    )}
+                    {funded &&
+                      intent === "trade" &&
+                      (!quote ? (
                         <button
                           className="button dark full-width"
-                          disabled={!!busy || !!pending}
+                          disabled={
+                            !!busy ||
+                            !!pending ||
+                            invalid ||
+                            insufficient ||
+                            !snapshot ||
+                            Number(snapshot.eth) === 0
+                          }
                           onClick={() =>
-                            void act(expired ? "quote" : "execute")
+                            void act(needsAllowance ? "approve" : "quote")
                           }
                         >
                           {busy ? (
-                            <LoaderCircle className="spin" size={16} />
+                            <LoaderCircle size={16} className="spin" />
                           ) : null}
-                          {expired ? "Refresh quote" : "Confirm exit"}
+                          {needsAllowance
+                            ? `Approve ${invalid ? "" : amount} WETH`
+                            : "Get exit quote"}
                         </button>
-                      </div>
-                    )}
-                    {needsAllowance && !quote && (
-                      <p className="wallet-disclosure">
-                        The spending limit applies only to this amount and the
-                        fixed exit contract. You will review the quote before
-                        the swap.
-                      </p>
-                    )}
+                      ) : (
+                        <div className="quote-review">
+                          <dl className="policy-details">
+                            <div>
+                              <dt>You sell</dt>
+                              <dd>{amount} WETH</dd>
+                            </div>
+                            <div>
+                              <dt>Expected received</dt>
+                              <dd>
+                                {(Number(quote.amountOut) / 1e6).toFixed(4)}{" "}
+                                USDC
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Minimum received · 1% slippage</dt>
+                              <dd>
+                                {(
+                                  Number(
+                                    (BigInt(quote.amountOut) * 99n) / 100n,
+                                  ) / 1e6
+                                ).toFixed(4)}{" "}
+                                USDC
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Destination</dt>
+                              <dd>Your treasury</dd>
+                            </div>
+                            <div>
+                              <dt>Quote expires</dt>
+                              <dd>
+                                {expired
+                                  ? "Expired"
+                                  : `${Math.max(0, Math.ceil((quote.deadline * 1000 - now) / 1000))} seconds`}
+                              </dd>
+                            </div>
+                          </dl>
+                          <button
+                            className="button dark full-width"
+                            disabled={!!busy || !!pending}
+                            onClick={() =>
+                              void act(expired ? "quote" : "execute")
+                            }
+                          >
+                            {busy ? (
+                              <LoaderCircle className="spin" size={16} />
+                            ) : null}
+                            {expired ? "Refresh quote" : "Confirm exit"}
+                          </button>
+                        </div>
+                      ))}
+                    {funded &&
+                      intent === "trade" &&
+                      needsAllowance &&
+                      !quote && (
+                        <p className="wallet-disclosure">
+                          The spending limit applies only to this amount and the
+                          fixed exit contract. You will review the quote before
+                          the swap.
+                        </p>
+                      )}
                   </>
                 )}
                 {pending && (
@@ -542,15 +661,6 @@ function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
                     >
                       Check confirmation / recover receipt
                     </button>
-                  </div>
-                )}
-                {message && (
-                  <div
-                    role="status"
-                    className="alert notice"
-                    style={{ marginTop: 16 }}
-                  >
-                    {message}
                   </div>
                 )}
                 {hash && !pending && (

@@ -158,6 +158,37 @@
   transform: rotate(1deg);
   margin-bottom: 15px;
 }
+.heroFlow {
+  padding: 24px;
+  display: grid;
+  gap: 22px;
+}
+.heroFlow > div {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+.heroFlow > div > span {
+  background: #c6f14a;
+  border: 2px solid #20221f;
+  padding: 8px;
+  font-weight: 700;
+}
+.heroFlow h3 {
+  font-size: 22px;
+  margin: 7px 0;
+  line-height: 1.2;
+}
+.heroFlow p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #60655c;
+  margin: 0;
+}
+.heroFlow small {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
 .visualTop {
   display: flex;
   align-items: center;
