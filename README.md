@@ -4,17 +4,17 @@
 
 A treasury stress lab for ETHOnline 2026. A token balance is not a cash guarantee: compare executable USDC under market shocks, approve explicit limits, execute through a bounded contract, and reconcile the outcome.
 
-## Demo
+## Use the app
 
 Visit [the landing page](https://exit-drill.vercel.app), [the stress lab](https://exit-drill.vercel.app/app), or [the documentation](https://exit-drill.vercel.app/docs).
 
-1. Select **Try example** in the market data selector. Keep the example scenario at **30 WETH / $60,000 payroll / 25% shock**.
-2. **Run stress test**. Actual Uniswap v3 routes execute in an isolated EVM. The deeper 0.30% route returns about **54,896 USDC**, leaving a **5,104 USDC shortfall**.
-3. **Review exit policy** and approve the minimum output.
-4. **Test bad recipient**. Solidity rejects recipient substitution.
-5. **Complete rehearsal**, open the receipt, and export JSON. Settlement matches the ERC20 balance delta.
+1. Sign in and open your managed Sepolia treasury. Fund its address with Sepolia ETH for network fees and request test WETH under **Add funds**.
+2. Analyze an amount against fresh Ethereum market data. Compare estimated USDC proceeds and payroll coverage under stress.
+3. Select **Review exit** to carry the amount and fee tier into your treasury. Live balances and bounded spending allowance determine the next action.
+4. Review a fresh Sepolia quote, its minimum output and expiry, then **Confirm exit**.
+5. Inspect the confirmed settlement receipt and export JSON. Pending transactions can be recovered without resubmitting them.
 
-The sandbox works without accounts, API keys, wallets or real funds. It uses official Uniswap factory, pool and SwapRouter bytecode on Ganache, not mocked swap responses. Every request creates an ephemeral chain; its hashes cannot be looked up on public explorers. Reference liquidity and market history are synthetic. JSON receipts are service evidence, not independently verifiable public-chain proof; checksums detect accidental edits, not malicious forgery.
+The product uses live market data and actual Sepolia settlement. Sepolia tokens have no monetary value. The stress engine uses official Uniswap bytecode on ephemeral Ganache chains to estimate outcomes from full-range liquidity calibrated to Ethereum data. Estimates are not executable mainnet quotes. Reference fixtures and sandbox execution APIs remain available for developer tests, outside the product workflow. Receipt checksums detect accidental edits; public transaction hashes provide independently inspectable settlement evidence.
 
 ## Development
 
@@ -34,20 +34,20 @@ Live demo: **https://exit-drill.vercel.app**. Run `npm run test:smoke -- https:/
 
 ## Architecture
 
-- **Evidence:** `src/lib/graph.ts` queries a Uniswap v3 subgraph server-side and rejects stale/missing metadata or indexing errors. Current Ethereum data is the default when configured; the repeatable example fixture is explicitly labeled. Historical timestamps are verified against the exact Ethereum block when Graph Node omits them.
+- **Evidence:** `src/lib/graph.ts` queries a Uniswap v3 subgraph server-side and rejects stale/missing metadata or indexing errors. The dashboard uses Ethereum data with no synthetic fallback. Historical timestamps are verified against the exact Ethereum block when Graph Node omits them.
 - **Stress engine:** `src/lib/sandbox.ts` deploys full-range liquidity pools, applies competing sells targeting a marginal price decline, and uses snapshots/reverts to compare exits through real Uniswap bytecode.
-- **Authorization:** the user reviews minimum output and approves the sandbox plan. In the configured public testnet path, Privy verifies user JWTs and creates an app-managed testnet wallet with a signing policy restricted to Sepolia and fixed contract methods.
+- **Authorization:** Privy verifies user JWTs and creates an app-managed treasury with a signing policy restricted to Sepolia and fixed contract methods. `/api/privy/balance` verifies treasury ownership before reading balances and allowance. External wallet sign-in only identifies the account; it does not switch networks or submit external-wallet transactions.
 - **Execution:** `contracts/ExitExecutor.sol` fixes router and tokens; enforces caller-only recipient, 100 WETH cap, fee allowlist, positive minimum output, short expiry, consumed nonce and reentrancy protection. Router allowance is cleared after execution.
 - **Reconciliation:** sandbox receipts check balance snapshots; `/api/reconcile` checks public testnet transaction success, owner, executor event and matching token-transfer logs. These accounting bases are explicitly distinguished. Receipts persist in the browser and export as JSON.
-- **Frontend:** React/Next.js with a responsive neobrutalist dashboard, scenarios, route comparison, policy review, rejection demo and receipt inspection.
+- **Frontend:** React/Next.js with a responsive neobrutalist dashboard, scenarios, route comparison, treasury funding, quote review, pending-transaction recovery and confirmed receipt inspection.
 
 ## Configuration
 
-Copy `.env.example` to `.env.local`. Keep secrets out of git and chat. Reference mode needs **no environment variables**.
+Copy `.env.example` to `.env.local`. Keep secrets out of git and chat. The product requires the configured Graph and Privy services below; developer reference tests do not.
 
 ### The Graph
 
-Set `GRAPH_API_KEY` and `GRAPH_SUBGRAPH_ID` to an Ethereum Uniswap v3 deployment supporting `_meta.block.timestamp`, pools and poolDayData. The dashboard opens with a market snapshot when configured. Choose **Use market snapshot** in the market data selector. Both 0.05% and 0.30% WETH/USDC pools must exist.
+Set `GRAPH_API_KEY` and `GRAPH_SUBGRAPH_ID` to an Ethereum Uniswap v3 deployment supporting `_meta.block.timestamp`, pools and poolDayData. The dashboard loads the market snapshot automatically. Both 0.05% and 0.30% WETH/USDC pools must exist.
 
 Live TVL and price calibrate synthetic full-range pools. This is **not a mainnet fork**, does not reconstruct concentrated ticks, and does not predict actual mainnet fills. Live evidence, both route simulations, and receipt settlement have been verified against this source: 5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV.
 
@@ -70,7 +70,7 @@ Connect with Privy, provision the treasury wallet, fund its address with Sepolia
 
 ## Vercel
 
-Import `Nakshatra05/exit-drill`, select Next.js, and deploy `main` using Node 22 or 24. The default demo needs no credentials. Ganache stays server-only and external; EVM routes use Node with a 60-second duration. Git pushes trigger deployment after import.
+Import `Nakshatra05/exit-drill`, select Next.js, configure the environment variables above, and deploy `main` using Node 22 or 24. Ganache stays server-only and external; EVM routes use Node with a 60-second duration. Git pushes trigger deployment after import.
 
 ## Validation and boundaries
 

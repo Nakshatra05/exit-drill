@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useDialog } from "./use-dialog";
+import type { ExitRequest, WalletSnapshot } from "@/lib/wallet-types";
 import { balanceDeltaUsdc } from "@/lib/receipt-math";
 import {
   ArrowDownLeft,
@@ -73,7 +73,7 @@ async function request<T>(url: string, body?: unknown): Promise<T> {
   return j;
 }
 export default function Dashboard({
-  defaultEvidenceMode = "reference",
+  defaultEvidenceMode = "graph",
 }: {
   defaultEvidenceMode?: "reference" | "graph";
 }) {
@@ -87,23 +87,9 @@ export default function Dashboard({
     [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [policyOpen, setPolicyOpen] = useState(false),
-    [settingsOpen, setSettingsOpen] = useState(false),
-    [approved, setApproved] = useState(false),
-    [rejected, setRejected] = useState(false),
+    [walletRequest, setWalletRequest] = useState<ExitRequest | null>(null),
+    [walletSnapshot, setWalletSnapshot] = useState<WalletSnapshot | null>(null),
     [mobileNav, setMobileNav] = useState(false);
-  useDialog(policyOpen || settingsOpen, () => {
-    setPolicyOpen(false);
-    setSettingsOpen(false);
-  });
-  useEffect(() => {
-    if (!approved) return;
-    const timer = setTimeout(() => {
-      setApproved(false);
-      setNotice("Approval expired. Review a fresh exit policy.");
-    }, 600000);
-    return () => clearTimeout(timer);
-  }, [approved]);
   const refresh = async (nextMode = mode) => {
     if (busy) return;
     setBusy("evidence");
@@ -113,8 +99,6 @@ export default function Dashboard({
       setEvidence(data);
       setMode(nextMode);
       setResult(null);
-      setApproved(false);
-      setRejected(false);
       setReceipt(null);
     } catch (e) {
       setError((e as Error).message);
@@ -136,7 +120,8 @@ export default function Dashboard({
                 r &&
                 typeof r.id === "string" &&
                 r.status === "confirmed" &&
-                [31337, 11155111].includes(r.chainId),
+                r.chainId === 11155111 &&
+                r.mode === "sepolia",
             )
             .slice(0, 20),
         );
@@ -146,9 +131,7 @@ export default function Dashboard({
     if (busy) return;
     setInput((v) => ({ ...v, [key]: value }));
     setResult(null);
-    setApproved(false);
     setReceipt(null);
-    setRejected(false);
   };
   const run = async () => {
     if (busy) return;
@@ -156,8 +139,6 @@ export default function Dashboard({
     setError("");
     setResult(null);
     setReceipt(null);
-    setApproved(false);
-    setRejected(false);
     try {
       const data = await request<DrillResult>("/api/drill", {
         input,
@@ -166,47 +147,10 @@ export default function Dashboard({
       });
       setResult(data);
       setNotice(
-        "Rehearsal complete. Compare routes, then review your exit policy.",
+        "Analysis complete. Compare routes, then review a fresh wallet quote.",
       );
     } catch (e) {
       setError((e as Error).message);
-    } finally {
-      setBusy("");
-    }
-  };
-  const execute = async (violation = false) => {
-    if (!result || busy || !approved) return;
-    setBusy(violation ? "attack" : "execution");
-    setError("");
-    try {
-      const r = await request<Receipt>("/api/execute", {
-        input,
-        evidenceMode: mode,
-        evidenceBlock: result.evidenceBlock,
-        feeTier: result.selectedFee,
-        minimumOutUsdc: result.amountOutUsdc * (1 - input.slippageBps / 10000),
-        approved: true,
-        testViolation: violation,
-      });
-      if (!violation) {
-        setReceipt(r);
-        const next = [r, ...receipts.filter((old) => old.id !== r.id)].slice(
-          0,
-          20,
-        );
-        setReceipts(next);
-        try {
-          localStorage.setItem("exit-drill-receipts-v1", JSON.stringify(next));
-        } catch {}
-        setNotice(
-          "Rehearsal settled. Your receipt matches the tokens received.",
-        );
-      }
-    } catch (e) {
-      if (violation && (e as Error).message.includes("WrongRecipient")) {
-        setRejected(true);
-        setNotice("Recipient change blocked. No tokens moved.");
-      } else setError((e as Error).message);
     } finally {
       setBusy("");
     }
@@ -223,19 +167,16 @@ export default function Dashboard({
   };
   const totalTvl = evidence?.pools.reduce((a, p) => a + p.tvlUsd, 0) ?? 0;
   const coverage = result?.coveragePercent;
-  const currentStage = receipt
-    ? 4
-    : approved
-      ? 3
-      : result
-        ? 2
-        : evidence
-          ? 1
-          : 0;
+  const currentStage = receipt ? 4 : result ? 2 : evidence ? 1 : 0;
+  const visibleReceipts = receipts.filter(
+    (r) =>
+      walletSnapshot &&
+      r.recipient?.toLowerCase() === walletSnapshot.address.toLowerCase(),
+  );
   const nav = [
     { label: "Overview", icon: LayoutDashboard },
     { label: "Stress lab", icon: FlaskConical },
-    { label: "Policy controls", icon: ShieldCheck },
+    { label: "Exit limits", icon: ShieldCheck },
     { label: "Receipts", icon: FileCheck2 },
   ];
   return (
@@ -271,7 +212,7 @@ export default function Dashboard({
               <Icon size={19} />
               {label}
               {label === "Receipts" && (
-                <span className="nav-count">{receipts.length}</span>
+                <span className="nav-count">{visibleReceipts.length}</span>
               )}
               {view === label && label !== "Receipts" && (
                 <ArrowUpRight className="nav-arrow" size={17} />
@@ -285,15 +226,12 @@ export default function Dashboard({
             Documentation <ArrowUpRight size={13} />
           </a>
           <div className="network-card">
-            <span className="tiny-label">PRACTICE WITH CONFIDENCE</span>
-            <strong>
-              <span className="status-dot" />
-              Rehearsal mode
-            </strong>
-            <small>Virtual funds. No wallet transfers.</small>
-            <button onClick={() => setSettingsOpen(true)}>
-              Market data <ArrowUpRight size={14} />
-            </button>
+            <span className="tiny-label">CONNECTED WORKFLOW</span>
+            <strong>Analyze. Review. Settle.</strong>
+            <small>Every exit returns to your treasury.</small>
+            <a className="docs-link" href="/docs#limits">
+              Your exit limits <ArrowUpRight size={14} />
+            </a>
           </div>
           <a
             className="source-link"
@@ -328,13 +266,14 @@ export default function Dashboard({
             <strong>{view}</strong>
           </div>
           <div className="header-actions">
-            <button className="mode-pill" onClick={() => setSettingsOpen(true)}>
+            <span className="mode-pill">
               <span className="status-dot" />
-              {mode === "graph" ? "Market snapshot" : "Example scenario"}
-              <ChevronDown size={13} />
-            </button>
+              Sepolia <span className="subtle">testnet</span>
+            </span>
             {process.env.NEXT_PUBLIC_PRIVY_APP_ID ? (
               <LiveWallet
+                exitRequest={walletRequest}
+                onSnapshot={setWalletSnapshot}
                 onReceipt={(r) => {
                   const next = [
                     r,
@@ -347,13 +286,18 @@ export default function Dashboard({
                       JSON.stringify(next),
                     );
                   } catch {}
+                  setReceipt(r);
                   setView("Receipts");
                 }}
               />
             ) : (
               <button
                 className="button dark compact"
-                onClick={() => setSettingsOpen(true)}
+                onClick={() =>
+                  setError(
+                    "Wallet sign-in is temporarily unavailable. Please try again shortly.",
+                  )
+                }
               >
                 <Wallet size={16} />
                 Connect wallet
@@ -374,7 +318,7 @@ export default function Dashboard({
                   ? "Ready for the unexpected."
                   : view === "Stress lab"
                     ? "Pressure-test your exit."
-                    : view === "Policy controls"
+                    : view === "Exit limits"
                       ? "Your limits. Enforced."
                       : "Every exit. Accounted for."}
               </h1>
@@ -396,21 +340,39 @@ export default function Dashboard({
               Refresh market data
             </button>
           </section>
-          <div className="context-strip">
-            <span>
-              <FlaskConical size={16} />
+          <div className="account-strip">
+            <div>
+              <span className="tiny-label">TREASURY WALLET</span>
               <strong>
-                {mode === "graph" ? "MARKET REHEARSAL" : "EXAMPLE REHEARSAL"}
+                {walletSnapshot
+                  ? short(walletSnapshot.address)
+                  : "Sign in to view your balances"}
               </strong>
-            </span>
-            <p>
-              {mode === "graph"
-                ? "Current prices inform this model. Results are estimates, not guaranteed market fills."
-                : "Practice an exit with a repeatable scenario. Your wallet balance stays untouched."}
-            </p>
-            <button onClick={() => setSettingsOpen(true)}>
-              Change data <ArrowRight size={15} />
-            </button>
+            </div>
+            <div>
+              <span className="tiny-label">WETH BALANCE</span>
+              <strong>
+                {walletSnapshot
+                  ? Number(walletSnapshot.weth).toLocaleString(undefined, {
+                      maximumFractionDigits: 4,
+                    })
+                  : "—"}
+              </strong>
+            </div>
+            <div>
+              <span className="tiny-label">USDC BALANCE</span>
+              <strong>
+                {walletSnapshot ? money(Number(walletSnapshot.usdc), 2) : "—"}
+              </strong>
+            </div>
+            <div>
+              <span className="tiny-label">NETWORK FEES</span>
+              <strong>
+                {walletSnapshot
+                  ? Number(walletSnapshot.eth).toFixed(5) + " ETH"
+                  : "—"}
+              </strong>
+            </div>
           </div>
           {error && (
             <div className="alert error" role="alert">
@@ -430,18 +392,18 @@ export default function Dashboard({
               </button>
             </div>
           )}
-          {view !== "Receipts" && view !== "Policy controls" && (
+          {view !== "Receipts" && view !== "Exit limits" && (
             <>
               <section className="metrics" aria-label="Treasury metrics">
                 <article className="metric">
                   <div className="metric-label">
-                    TREASURY POSITION <Wallet size={17} />
+                    AMOUNT TO ANALYZE <Wallet size={17} />
                   </div>
                   <div className="metric-number">
                     {input.amountEth.toFixed(2)} <span>WETH</span>
                   </div>
                   <div className="metric-foot">
-                    <span className="mini-chip">01 ASSET</span>Ready to rehearse
+                    <span className="mini-chip">01 ASSET</span>Scenario input
                   </div>
                 </article>
                 <article className="metric">
@@ -458,7 +420,7 @@ export default function Dashboard({
                 </article>
                 <article className="metric lime">
                   <div className="metric-label">
-                    STRESSED CASH OUT <Activity size={18} />
+                    ESTIMATED STRESSED OUTPUT <Activity size={18} />
                   </div>
                   <div className="metric-number">
                     {result ? money(result.amountOutUsdc) : "—"}
@@ -628,7 +590,7 @@ export default function Dashboard({
                       <Play size={17} />
                     )}{" "}
                     {busy === "simulation"
-                      ? "Running EVM rehearsal…"
+                      ? "Calculating stressed output…"
                       : "Run stress test"}
                     <span>{busy === "simulation" ? "Please wait" : "↗"}</span>
                   </button>
@@ -837,12 +799,12 @@ export default function Dashboard({
                   <span>
                     <span className="status-dot" />
                     {evidence
-                      ? `${mode === "graph" ? `Block ${evidence.block.toLocaleString()}` : "Deterministic fixture"} · ${money(totalTvl)} total TVL`
+                      ? `${mode === "graph" ? `Block ${evidence.block.toLocaleString()}` : "Market snapshot"} · ${money(totalTvl)} total TVL`
                       : "Loading source evidence…"}
                   </span>
                   <span>
                     {mode === "graph"
-                      ? "Ethereum data · isolated execution"
+                      ? "Ethereum market data · modeled output"
                       : "No real funds at risk"}
                   </span>
                 </div>
@@ -854,72 +816,34 @@ export default function Dashboard({
                 <div>
                   <h3>
                     {receipt
-                      ? "Exit settled. Evidence preserved."
-                      : approved
-                        ? "Your policy is armed."
-                        : "A good exit starts with good limits."}
+                      ? "Exit settled. Receipt verified."
+                      : "Turn your analysis into an exit."}
                   </h3>
                   <p>
-                    {receipt
-                      ? `Rehearsal transaction ${short(receipt.transactionHash)}`
-                      : approved
-                        ? "The executor enforces recipient, amount, expiry and minimum output."
-                        : "Review the amount, minimum received, and permitted destination before execution."}
+                    Review a fresh Sepolia quote for this amount and route.
+                    Stress estimates are never used as settlement quotes.
                   </p>
                 </div>
                 <div className="execution-actions">
-                  {approved && !receipt && (
-                    <>
-                      <button
-                        className="button light"
-                        onClick={() => void execute(true)}
-                        disabled={!!busy}
-                      >
-                        {busy === "attack" ? (
-                          <LoaderCircle className="spin" size={16} />
-                        ) : (
-                          <ShieldCheck size={16} />
-                        )}{" "}
-                        {rejected ? "Attack blocked" : "Test bad recipient"}
-                      </button>
-                      <button
-                        className="button lime-button"
-                        onClick={() => void execute()}
-                        disabled={!!busy}
-                      >
-                        {busy === "execution" ? (
-                          <LoaderCircle className="spin" size={17} />
-                        ) : (
-                          <Zap size={17} />
-                        )}
-                        Complete rehearsal
-                      </button>
-                    </>
-                  )}
-                  {!approved && (
-                    <button
-                      className="button light"
-                      disabled={!result || !!busy}
-                      onClick={() => setPolicyOpen(true)}
-                    >
-                      Review exit policy <ArrowRight size={17} />
-                    </button>
-                  )}
-                  {receipt && (
-                    <button
-                      className="button lime-button"
-                      onClick={() => {
-                        setView("Receipts");
-                      }}
-                    >
-                      Open receipt <ArrowRight size={17} />
-                    </button>
-                  )}
+                  <button
+                    className="button lime-button"
+                    disabled={!result || !!busy}
+                    onClick={() =>
+                      result &&
+                      setWalletRequest({
+                        id: Date.now(),
+                        amount: input.amountEth,
+                        fee: result.selectedFee as 500 | 3000,
+                      })
+                    }
+                  >
+                    Review exit <ArrowRight size={17} />
+                  </button>
                 </div>
               </section>
             </>
           )}
-          {view === "Policy controls" && (
+          {view === "Exit limits" && (
             <section className="panel policy-page">
               <div className="panel-heading">
                 <div>
@@ -929,9 +853,9 @@ export default function Dashboard({
                 <ShieldCheck size={26} />
               </div>
               <p className="panel-description">
-                Every rehearsal checks the recipient, amount and minimum
-                received. Your testnet wallet adds signing limits before a
-                transaction is sent.
+                Your wallet restricts signing to approved actions. The exit
+                contract enforces the amount, destination and minimum received
+                at settlement.
               </p>
               <div className="policy-rule">
                 <LockKeyhole />
@@ -976,7 +900,7 @@ export default function Dashboard({
                 className="button dark"
                 onClick={() => setView("Stress lab")}
               >
-                Start with a rehearsal <ArrowRight size={17} />
+                Analyze an exit <ArrowRight size={17} />
               </button>
             </section>
           )}
@@ -987,33 +911,34 @@ export default function Dashboard({
                   <span className="section-index">RECONCILIATION</span>
                   <h2>
                     Settlement receipts{" "}
-                    <span className="count-label">{receipts.length}</span>
+                    <span className="count-label">
+                      {visibleReceipts.length}
+                    </span>
                   </h2>
                 </div>
                 <FileCheck2 size={25} />
               </div>
               <p className="panel-description">
                 Saved in this browser. Export JSON for a portable audit record.
-                Rehearsal receipts record practice exits. Sepolia receipts link
-                to public testnet transactions.
+                Every receipt links to a confirmed Sepolia transaction.
               </p>
-              {receipts.length === 0 ? (
+              {visibleReceipts.length === 0 ? (
                 <div className="empty-receipts">
                   <FileCheck2 size={45} />
-                  <h3>Your first receipt starts with a drill.</h3>
+                  <h3>Your confirmed exits appear here.</h3>
                   <p>
-                    Run a stress test, approve its limits, and complete a
-                    rehearsal.
+                    Analyze an amount, review a live quote, and confirm your
+                    exit.
                   </p>
                   <button
                     className="button dark"
                     onClick={() => setView("Stress lab")}
                   >
-                    Run your first drill <ArrowRight size={17} />
+                    Analyze your first exit <ArrowRight size={17} />
                   </button>
                 </div>
               ) : (
-                receipts.map((r) => (
+                visibleReceipts.map((r) => (
                   <article className="receipt-card" key={r.id}>
                     <div className="receipt-top">
                       <span className="best-route">
@@ -1109,185 +1034,13 @@ export default function Dashboard({
             </span>
             <span>
               ETHOnline 2026 <span className="footer-divider">·</span>
-              <button onClick={() => setSettingsOpen(true)}>
-                Market data <ArrowUpRight size={13} />
-              </button>
+              <a href="/docs">
+                User guide <ArrowUpRight size={13} />
+              </a>
             </span>
           </footer>
         </main>
       </div>
-      {policyOpen && result && (
-        <div className="modal-backdrop" onClick={() => setPolicyOpen(false)}>
-          <section
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="policy-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-heading">
-              <span className="eyebrow">APPROVE A BOUNDED EXIT</span>
-              <button
-                className="icon-button"
-                aria-label="Close policy review"
-                onClick={() => setPolicyOpen(false)}
-              >
-                <X />
-              </button>
-            </div>
-            <h2 id="policy-title">Make the limits explicit.</h2>
-            <p>
-              Approval applies to this rehearsal only. Changing any scenario
-              input clears approval.
-            </p>
-            <dl className="policy-details">
-              <div>
-                <dt>Maximum input</dt>
-                <dd>{input.amountEth} WETH</dd>
-              </div>
-              <div>
-                <dt>Expected output</dt>
-                <dd>{money(result.amountOutUsdc, 2)} USDC</dd>
-              </div>
-              <div>
-                <dt>Slippage tolerance</dt>
-                <dd>
-                  <select
-                    aria-label="Slippage tolerance"
-                    value={input.slippageBps}
-                    onChange={(e) => {
-                      setInput({
-                        ...input,
-                        slippageBps: Number(e.target.value),
-                      });
-                      setApproved(false);
-                    }}
-                  >
-                    <option value={50}>0.50%</option>
-                    <option value={100}>1.00%</option>
-                    <option value={200}>2.00%</option>
-                  </select>
-                </dd>
-              </div>
-              <div>
-                <dt>Minimum received</dt>
-                <dd>
-                  {money(
-                    result.amountOutUsdc * (1 - input.slippageBps / 10000),
-                    2,
-                  )}{" "}
-                  USDC
-                </dd>
-              </div>
-              <div>
-                <dt>Permitted recipient</dt>
-                <dd>Calling treasury only</dd>
-              </div>
-              <div>
-                <dt>Expiry / replay</dt>
-                <dd>10 minutes / single use</dd>
-              </div>
-            </dl>
-            {result.shortfallUsdc > 0 && (
-              <div className="alert warning">
-                <AlertTriangle size={18} />
-                This exit leaves a {money(result.shortfallUsdc)} payroll
-                shortfall.
-              </div>
-            )}
-            <div className="modal-note">
-              <FlaskConical size={17} />
-              Rehearsal approval only. This does not authorize a wallet
-              transaction.
-            </div>
-            <button
-              className="button dark full-width"
-              onClick={() => {
-                setApproved(true);
-                setPolicyOpen(false);
-                setNotice(
-                  "Rehearsal limits approved. Test a rejection or complete your exit.",
-                );
-              }}
-            >
-              <ShieldCheck size={18} />
-              Approve rehearsal limits
-            </button>
-          </section>
-        </div>
-      )}
-      {settingsOpen && (
-        <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}>
-          <section
-            className="modal wide-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="setup-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-heading">
-              <span className="eyebrow">YOUR SCENARIO</span>
-              <button
-                className="icon-button"
-                aria-label="Close market data choices"
-                onClick={() => setSettingsOpen(false)}
-              >
-                <X />
-              </button>
-            </div>
-            <h2 id="setup-title">Choose your market data.</h2>
-            <p>
-              Both choices run a rehearsal with virtual funds. Changing data
-              clears your current result and approval.
-            </p>
-            <div className="policy-rule">
-              <Database />
-              <div>
-                <strong>Current market snapshot</strong>
-                <p>
-                  Use recent Ethereum WETH/USDC prices and liquidity to
-                  calibrate your scenario. Refresh after ten minutes.
-                </p>
-              </div>
-            </div>
-            <div className="policy-rule">
-              <FlaskConical />
-              <div>
-                <strong>Example scenario</strong>
-                <p>
-                  Start at $2,500 per WETH with fixed liquidity. Useful for
-                  learning the workflow and comparing repeatable drills.
-                </p>
-              </div>
-            </div>
-            <div className="mode-buttons">
-              <button
-                className="button dark"
-                disabled={!!busy}
-                onClick={() => {
-                  setSettingsOpen(false);
-                  void refresh("graph");
-                }}
-              >
-                Use market snapshot <ArrowUpRight size={16} />
-              </button>
-              <button
-                className="button light"
-                disabled={!!busy}
-                onClick={() => {
-                  setSettingsOpen(false);
-                  void refresh("reference");
-                }}
-              >
-                Try example
-              </button>
-            </div>
-            <a className="docs-link" href="/docs#market-data">
-              Understanding market data <ArrowRight size={14} />
-            </a>
-          </section>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useDialog } from "./use-dialog";
+import { useEffect, useRef, useState } from "react";
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { createPublicClient, http, type Hex } from "viem";
 import { sepolia } from "viem/chains";
@@ -10,48 +9,92 @@ import {
   ExternalLink,
   LoaderCircle,
   Copy,
-  Check,
+  RefreshCw,
+  ArrowRight,
 } from "lucide-react";
+import { useDialog } from "./use-dialog";
 import type { Receipt } from "@/lib/types";
-type TreasuryWallet = { id: string; address: string; policyId: string };
-function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
+import type { ExitRequest, WalletSnapshot } from "@/lib/wallet-types";
+type Props = {
+  onReceipt: (receipt: Receipt) => void;
+  onSnapshot: (snapshot: WalletSnapshot | null) => void;
+  exitRequest: ExitRequest | null;
+};
+type Treasury = { id: string; address: string };
+type Quote = { amountOut: string; nonce: string; deadline: number };
+type Pending = { hash: Hex; action: string };
+const rpc = createPublicClient({
+  chain: sepolia,
+  transport: http("https://ethereum-sepolia-rpc.publicnode.com", {
+    timeout: 10000,
+    retryCount: 1,
+  }),
+});
+function WalletControl({ onReceipt, onSnapshot, exitRequest }: Props) {
   const { ready, authenticated, login, logout, getAccessToken, user } =
     usePrivy();
   const [open, setOpen] = useState(false),
-    [wallet, setWallet] = useState<TreasuryWallet | null>(null),
+    [wallet, setWallet] = useState<Treasury | null>(null),
+    [snapshot, setSnapshot] = useState<WalletSnapshot | null>(null),
+    [amount, setAmount] = useState(0.01),
+    [fee, setFee] = useState<500 | 3000>(3000),
+    [quote, setQuote] = useState<Quote | null>(null),
     [busy, setBusy] = useState(""),
     [message, setMessage] = useState(""),
-    [amount, setAmount] = useState(0.01),
-    [quote, setQuote] = useState<{
-      amountOut: string;
-      nonce: string;
-      deadline: number;
-    } | null>(null),
+    [pending, setPending] = useState<Pending | null>(null),
     [hash, setHash] = useState(""),
-    [pendingExit, setPendingExit] = useState(""),
-    [now, setNow] = useState(Date.now());
-  const pendingKey = `exit-drill-pending-${user?.id ?? "anonymous"}`;
+    [now, setNow] = useState(Date.now()),
+    [funding, setFunding] = useState(false);
+  const reopen = useRef(false),
+    handled = useRef<number | null>(null),
+    identity = useRef(user?.id);
+  identity.current = user?.id;
+  const pendingKey = `exit-drill-pending-v2-${user?.id ?? "anonymous"}`;
+  useDialog(open, () => setOpen(false));
   useEffect(() => {
     setWallet(null);
+    setSnapshot(null);
+    onSnapshot(null);
     setQuote(null);
-    setHash("");
     setMessage("");
+    setHash("");
     try {
-      setPendingExit(localStorage.getItem(pendingKey) ?? "");
-    } catch {}
-  }, [pendingKey]);
+      const stored = JSON.parse(localStorage.getItem(pendingKey) ?? "null");
+      setPending(
+        stored &&
+          /^0x[0-9a-fA-F]{64}$/.test(stored.hash) &&
+          ["mint", "approve", "execute"].includes(stored.action)
+          ? stored
+          : null,
+      );
+    } catch {
+      setPending(null);
+    }
+  }, [pendingKey, onSnapshot]);
+  useEffect(() => {
+    if (exitRequest && handled.current !== exitRequest.id) {
+      handled.current = exitRequest.id;
+      setAmount(exitRequest.amount);
+      setFee(exitRequest.fee);
+      setQuote(null);
+      setOpen(true);
+    }
+  }, [exitRequest]);
+  useEffect(() => {
+    if (authenticated && reopen.current) {
+      reopen.current = false;
+      setOpen(true);
+    }
+  }, [authenticated]);
   useEffect(() => {
     if (!open) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
   }, [open]);
-  const quoteExpired = !!quote && now >= quote.deadline * 1000;
-  const invalidAmount =
-    !Number.isFinite(amount) || amount < 0.001 || amount > 100;
-  useDialog(open, () => setOpen(false));
   const api = async (path: string, body: unknown) => {
     const token = await getAccessToken();
-    const response = await fetch(path, {
+    if (!token) throw new Error("Please sign in again.");
+    const r = await fetch(path, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,42 +102,90 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
       },
       body: JSON.stringify(body),
     });
-    const json = await response.json();
-    if (!response.ok) throw new Error(json.error ?? "Operation failed");
-    return json;
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error ?? "Please retry shortly.");
+    return j;
+  };
+  const balances = async (t: Treasury) => {
+    const owner = user?.id;
+    try {
+      const value: WalletSnapshot = await api("/api/privy/balance", {
+        walletId: t.id,
+      });
+      if (identity.current !== owner) return;
+      setSnapshot(value);
+      onSnapshot(value);
+    } catch {
+      if (identity.current !== owner) return;
+      setSnapshot(null);
+      onSnapshot(null);
+    }
   };
   const setup = async () => {
+    const owner = user?.id;
     setBusy("setup");
     setMessage("");
     try {
-      setWallet(await api("/api/privy/wallet", {}));
-      setMessage(
-        "Treasury ready. Send a little Sepolia ETH to this address for network fees, then get your test tokens.",
-      );
+      const t: Treasury = await api("/api/privy/wallet", {});
+      if (identity.current !== owner) return;
+      setWallet(t);
+      await balances(t);
     } catch (e) {
       setMessage((e as Error).message);
     } finally {
       setBusy("");
     }
   };
-  const act = async (action: string) => {
-    if (!wallet || busy || invalidAmount) return;
-    if (action === "execute" && (!quote || quoteExpired)) {
-      setMessage(
-        "Your preview expired. Request a fresh preview before continuing.",
+  useEffect(() => {
+    if (authenticated && !wallet && !busy) void setup();
+  }, [open, authenticated, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const persist = (p: Pending | null) => {
+    setPending(p);
+    try {
+      if (p) localStorage.setItem(pendingKey, JSON.stringify(p));
+      else localStorage.removeItem(pendingKey);
+    } catch {}
+  };
+  const finish = async (p: Pending) => {
+    const confirmed = await rpc.waitForTransactionReceipt({
+      hash: p.hash,
+      timeout: 60000,
+    });
+    if (confirmed.status !== "success") {
+      persist(null);
+      setQuote(null);
+      throw new Error(
+        "The transaction reverted. Refresh your balances and request a new quote.",
       );
-      return;
     }
+    if (p.action === "execute") {
+      onReceipt(await api("/api/reconcile", { hash: p.hash }));
+      setMessage("Exit confirmed. Your settlement receipt is ready.");
+    } else
+      setMessage(
+        p.action === "mint"
+          ? "WETH received. You can now review your exit."
+          : "Spending limit confirmed. Request a fresh quote.",
+      );
+    persist(null);
+    if (wallet) await balances(wallet);
+  };
+  const invalid = !Number.isFinite(amount) || amount < 0.001 || amount > 100;
+  const insufficient = !!snapshot && amount > Number(snapshot.weth);
+  const needsAllowance = !!snapshot && amount > Number(snapshot.allowance);
+  const expired = !!quote && now >= quote.deadline * 1000;
+  const act = async (action: string) => {
+    if (!wallet || busy || pending || invalid) return;
+    if (action === "execute" && (!quote || expired)) return;
     setBusy(action);
     setMessage("");
     setHash("");
-    if (action === "mint" || action === "approve") setQuote(null);
     try {
       const r = await api("/api/privy/action", {
         walletId: wallet.id,
         action,
         amount,
-        fee: 3000,
+        fee,
         ...(action === "execute" && quote
           ? {
               minimumOut: ((BigInt(quote.amountOut) * 99n) / 100n).toString(),
@@ -105,49 +196,14 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
       });
       if (action === "quote") {
         setQuote(r);
-        setMessage(
-          `Fresh Sepolia quote: ${(Number(r.amountOut) / 1e6).toFixed(4)} test USDC. Minimum received is 99% of this quote.`,
-        );
+        setNow(Date.now());
       } else {
+        setQuote(null);
+        const p = { hash: r.hash as Hex, action };
+        persist(p);
         setHash(r.hash);
-        if (action === "execute") {
-          setPendingExit(r.hash);
-          setQuote(null);
-          try {
-            localStorage.setItem(pendingKey, r.hash);
-          } catch {}
-        }
-        setMessage("Transaction submitted. Waiting for Sepolia confirmation…");
-        const rpc = createPublicClient({
-          chain: sepolia,
-          transport: http("https://ethereum-sepolia-rpc.publicnode.com"),
-        });
-        const confirmed = await rpc.waitForTransactionReceipt({
-          hash: r.hash as Hex,
-          timeout: 60000,
-        });
-        if (confirmed.status !== "success") {
-          if (action === "execute") {
-            setPendingExit("");
-            try {
-              localStorage.removeItem(pendingKey);
-            } catch {}
-          }
-          throw new Error("Transaction reverted on Sepolia.");
-        }
-        setMessage("Sepolia transaction confirmed.");
-        if (action === "execute") {
-          const receipt = await api("/api/reconcile", { hash: r.hash });
-          onReceipt(receipt);
-          setPendingExit("");
-          try {
-            localStorage.removeItem(pendingKey);
-          } catch {}
-          setQuote(null);
-          setMessage(
-            "Sepolia exit confirmed and reconciled. Find the record in Receipts.",
-          );
-        }
+        setMessage("Transaction submitted. Waiting for confirmation…");
+        await finish(p);
       }
     } catch (e) {
       setMessage((e as Error).message);
@@ -155,57 +211,21 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
       setBusy("");
     }
   };
-  const recover = async () => {
-    if (!pendingExit || busy) return;
-    setBusy("recover");
-    setMessage("");
-    try {
-      const rpc = createPublicClient({
-        chain: sepolia,
-        transport: http("https://ethereum-sepolia-rpc.publicnode.com", {
-          timeout: 10000,
-          retryCount: 1,
-        }),
-      });
-      const confirmed = await rpc.getTransactionReceipt({
-        hash: pendingExit as Hex,
-      });
-      if (confirmed.status === "reverted") {
-        setHash(pendingExit);
-        setPendingExit("");
-        setQuote(null);
-        try {
-          localStorage.removeItem(pendingKey);
-        } catch {}
-        setMessage(
-          "This transaction reverted. Request a new preview before trying another exit.",
-        );
-        return;
-      }
-      onReceipt(await api("/api/reconcile", { hash: pendingExit }));
-      setHash(pendingExit);
-      setPendingExit("");
-      try {
-        localStorage.removeItem(pendingKey);
-      } catch {}
-      setMessage("Receipt recovered. Find the verified exit under Receipts.");
-    } catch {
-      setMessage(
-        "This exit has not been reconciled yet. Check its transaction and retry after confirmation.",
-      );
-    } finally {
-      setBusy("");
-    }
+  const refresh = async () => {
+    if (!wallet || busy) return;
+    setBusy("balance");
+    await balances(wallet);
+    setBusy("");
   };
   return (
     <>
       <button
         className="button dark compact"
         disabled={!ready}
-        onClick={() => (authenticated ? setOpen(true) : login())}
+        onClick={() => setOpen(true)}
       >
         <Wallet size={15} />
-        {authenticated ? "Treasury wallet" : "Connect wallet"}
+        {authenticated ? "Treasury" : "Sign in"}
       </button>
       {open && (
         <div className="modal-backdrop">
@@ -213,227 +233,382 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
             className="modal wide-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="live-title"
+            aria-labelledby="wallet-title"
           >
             <div className="modal-heading">
-              <span className="eyebrow">YOUR TREASURY · SEPOLIA TESTNET</span>
+              <span className="eyebrow">TREASURY / SEPOLIA TESTNET</span>
               <button
                 className="icon-button"
-                aria-label="Close wallet"
+                aria-label="Close treasury"
                 onClick={() => setOpen(false)}
               >
                 <X />
               </button>
             </div>
-            <h2 id="live-title">Make your first test exit.</h2>
-            <p>
-              Practice with valueless test assets in a wallet managed by Exit
-              Drill. Your sign-in authorizes the actions you request; a signing
-              policy restricts what the wallet can do. Review a fresh testnet
-              quote before confirming.
-            </p>
-            {!wallet ? (
-              <button
-                className="button dark full-width"
-                style={{ marginTop: 20 }}
-                disabled={
-                  !!busy || !process.env.NEXT_PUBLIC_EXIT_EXECUTOR_ADDRESS
-                }
-                onClick={() => void setup()}
-              >
-                {busy ? (
-                  <LoaderCircle className="spin" size={16} />
-                ) : (
-                  <Wallet size={16} />
-                )}
-                Create treasury wallet
-              </button>
+            <h2 id="wallet-title">
+              {authenticated
+                ? "Review your exit."
+                : "Your treasury, connected."}
+            </h2>
+            {!authenticated ? (
+              <>
+                <p>
+                  Sign in with email or your wallet. Wallet sign-in proves
+                  account ownership; it does not approve tokens or transfer
+                  funds from MetaMask.
+                </p>
+                <p className="wallet-disclosure">
+                  Exit Drill manages a separate Sepolia treasury for your
+                  account. If your wallet flags this site as unsafe, stop and
+                  use its security review process.
+                </p>
+                <button
+                  className="button dark full-width"
+                  style={{ marginTop: 20 }}
+                  disabled={!ready}
+                  onClick={() => {
+                    reopen.current = true;
+                    setOpen(false);
+                    login();
+                  }}
+                >
+                  Continue to sign in <ArrowRight size={16} />
+                </button>
+              </>
             ) : (
               <>
-                <dl className="policy-details">
-                  <div>
-                    <dt>Address</dt>
-                    <dd style={{ wordBreak: "break-all", fontSize: 10 }}>
-                      {wallet.address}
-                    </dd>
+                <p className="wallet-disclosure">
+                  Managed by Exit Drill. This release settles on Sepolia using
+                  test assets. Ethereum market analysis and Sepolia quotes use
+                  different pools.
+                </p>
+                {!wallet ? (
+                  <button
+                    className="button dark full-width"
+                    disabled={!!busy}
+                    onClick={() => void setup()}
+                  >
+                    {busy ? (
+                      <LoaderCircle className="spin" size={16} />
+                    ) : (
+                      <Wallet size={16} />
+                    )}
+                    Open treasury
+                  </button>
+                ) : (
+                  <>
+                    <div className="wallet-address">
+                      <span>{wallet.address}</span>
+                      <button
+                        className="icon-button"
+                        aria-label="Copy treasury address"
+                        onClick={() =>
+                          void navigator.clipboard
+                            .writeText(wallet.address)
+                            .then(() => setMessage("Address copied."))
+                            .catch(() =>
+                              setMessage(
+                                "Copy the displayed address manually.",
+                              ),
+                            )
+                        }
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                    <div className="wallet-balances">
+                      <div>
+                        <small>WETH</small>
+                        <strong>
+                          {snapshot
+                            ? Number(snapshot.weth).toLocaleString(undefined, {
+                                maximumFractionDigits: 4,
+                              })
+                            : "—"}
+                        </strong>
+                      </div>
+                      <div>
+                        <small>USDC</small>
+                        <strong>
+                          {snapshot
+                            ? Number(snapshot.usdc).toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                              })
+                            : "—"}
+                        </strong>
+                      </div>
+                      <div>
+                        <small>ETH FOR FEES</small>
+                        <strong>
+                          {snapshot ? Number(snapshot.eth).toFixed(5) : "—"}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className="wallet-tools">
+                      <button
+                        className="button light compact"
+                        disabled={!!busy}
+                        onClick={() => void refresh()}
+                      >
+                        <RefreshCw size={14} />
+                        Refresh balances
+                      </button>
+                      <button
+                        className="button light compact"
+                        onClick={() => setFunding(!funding)}
+                      >
+                        Add funds
+                      </button>
+                    </div>
+                    {(!snapshot || funding || Number(snapshot.eth) === 0) && (
+                      <div className="wallet-help">
+                        <p>
+                          {!snapshot
+                            ? "Balances could not be loaded. Refresh before reviewing an exit."
+                            : "Send Sepolia ETH to the treasury address above to cover network fees. Use only Sepolia assets."}
+                        </p>
+                        {funding && (
+                          <>
+                            <p>
+                              The amount below can be requested as WETH from the
+                              Sepolia faucet. This request is an onchain
+                              transaction and uses network fees.
+                            </p>
+                            <button
+                              className="button light"
+                              disabled={
+                                !!busy ||
+                                !!pending ||
+                                invalid ||
+                                !snapshot ||
+                                Number(snapshot.eth) === 0
+                              }
+                              onClick={() => void act("mint")}
+                            >
+                              Request {invalid ? "" : amount} test WETH
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <div className="wallet-form">
+                      <label>
+                        WETH to sell
+                        <input
+                          aria-label="WETH to sell"
+                          type="number"
+                          min=".001"
+                          max="100"
+                          step=".01"
+                          value={amount}
+                          disabled={!!busy || !!pending}
+                          onChange={(e) => {
+                            setAmount(Number(e.target.value));
+                            setQuote(null);
+                          }}
+                        />
+                      </label>
+                      <label>
+                        Pool fee
+                        <select
+                          aria-label="Pool fee"
+                          value={fee}
+                          disabled={!!busy || !!pending}
+                          onChange={(e) => {
+                            setFee(Number(e.target.value) as 500 | 3000);
+                            setQuote(null);
+                          }}
+                        >
+                          <option value={500}>0.05%</option>
+                          <option value={3000}>0.30%</option>
+                        </select>
+                      </label>
+                    </div>
+                    {insufficient && (
+                      <p className="wallet-validation">
+                        Your treasury has {Number(snapshot!.weth).toFixed(4)}{" "}
+                        WETH. Reduce the amount or add funds.
+                      </p>
+                    )}
+                    {invalid && (
+                      <p className="wallet-validation">
+                        Enter an amount between 0.001 and 100 WETH.
+                      </p>
+                    )}
+                    {!quote ? (
+                      <button
+                        className="button dark full-width"
+                        disabled={
+                          !!busy ||
+                          !!pending ||
+                          invalid ||
+                          insufficient ||
+                          !snapshot ||
+                          Number(snapshot.eth) === 0
+                        }
+                        onClick={() =>
+                          void act(needsAllowance ? "approve" : "quote")
+                        }
+                      >
+                        {busy ? (
+                          <LoaderCircle size={16} className="spin" />
+                        ) : null}
+                        {needsAllowance
+                          ? `Allow ${invalid ? "" : amount} WETH`
+                          : "Get exit quote"}
+                      </button>
+                    ) : (
+                      <div className="quote-review">
+                        <dl className="policy-details">
+                          <div>
+                            <dt>You sell</dt>
+                            <dd>{amount} WETH</dd>
+                          </div>
+                          <div>
+                            <dt>Expected received</dt>
+                            <dd>
+                              {(Number(quote.amountOut) / 1e6).toFixed(4)} USDC
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Minimum received · 1% slippage</dt>
+                            <dd>
+                              {(
+                                Number((BigInt(quote.amountOut) * 99n) / 100n) /
+                                1e6
+                              ).toFixed(4)}{" "}
+                              USDC
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Destination</dt>
+                            <dd>Your treasury</dd>
+                          </div>
+                          <div>
+                            <dt>Quote expires</dt>
+                            <dd>
+                              {expired
+                                ? "Expired"
+                                : `${Math.max(0, Math.ceil((quote.deadline * 1000 - now) / 1000))} seconds`}
+                            </dd>
+                          </div>
+                        </dl>
+                        <button
+                          className="button dark full-width"
+                          disabled={!!busy || !!pending}
+                          onClick={() =>
+                            void act(expired ? "quote" : "execute")
+                          }
+                        >
+                          {busy ? (
+                            <LoaderCircle className="spin" size={16} />
+                          ) : null}
+                          {expired ? "Refresh quote" : "Confirm exit"}
+                        </button>
+                      </div>
+                    )}
+                    {needsAllowance && !quote && (
+                      <p className="wallet-disclosure">
+                        The spending limit applies only to this amount and the
+                        fixed exit contract. You will review the quote before
+                        the swap.
+                      </p>
+                    )}
+                  </>
+                )}
+                {pending && (
+                  <div className="wallet-help">
+                    <p>
+                      A submitted transaction is awaiting confirmation. Check it
+                      before starting another action.
+                    </p>
+                    <a
+                      className="docs-link"
+                      href={`https://sepolia.etherscan.io/tx/${pending.hash}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View transaction <ExternalLink size={14} />
+                    </a>
+                    <button
+                      className="button light"
+                      disabled={!!busy}
+                      onClick={() => {
+                        setBusy("recover");
+                        void finish(pending)
+                          .catch((e) => setMessage((e as Error).message))
+                          .finally(() => setBusy(""));
+                      }}
+                    >
+                      Check confirmation / recover receipt
+                    </button>
                   </div>
-                  <div>
-                    <dt>Network</dt>
-                    <dd>Sepolia · test assets only</dd>
+                )}
+                {message && (
+                  <div
+                    role="status"
+                    className="alert notice"
+                    style={{ marginTop: 16 }}
+                  >
+                    {message}
                   </div>
-                </dl>
-                <div className="wallet-help">
-                  <p>
-                    Send Sepolia ETH to this treasury for network fees. Do not
-                    send mainnet assets.
-                  </p>
+                )}
+                {hash && !pending && (
+                  <a
+                    className="docs-link"
+                    href={`https://sepolia.etherscan.io/tx/${hash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View transaction <ExternalLink size={14} />
+                  </a>
+                )}
+                <div className="wallet-tools">
+                  <a
+                    className="docs-link"
+                    href="/docs#wallet"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Wallet guide <ExternalLink size={14} />
+                  </a>
                   <button
                     className="button light compact"
                     disabled={!!busy}
-                    onClick={() =>
-                      void navigator.clipboard
-                        .writeText(wallet.address)
-                        .then(() => setMessage("Treasury address copied."))
-                        .catch(() =>
-                          setMessage("Copy the address above manually."),
-                        )
-                    }
-                  >
-                    <Copy size={14} />
-                    Copy address
-                  </button>
-                </div>
-                <label>
-                  Test WETH to exit{" "}
-                  <input
-                    aria-label="Sepolia WETH amount"
-                    type="number"
-                    min=".001"
-                    max="100"
-                    step=".01"
-                    value={amount}
-                    disabled={!!busy || !!pendingExit}
-                    onChange={(e) => {
-                      setAmount(Number(e.target.value));
-                      setQuote(null);
+                    onClick={() => {
+                      setOpen(false);
+                      setWallet(null);
+                      setSnapshot(null);
+                      onSnapshot(null);
+                      reopen.current = false;
+                      void logout();
                     }}
-                  />
-                </label>
-                <div
-                  className="mode-buttons"
-                  style={{ flexWrap: "wrap", margin: "20px 0" }}
-                >
-                  {["mint", "approve", "quote", "test-policy"].map((action) => (
-                    <button
-                      key={action}
-                      className="button light"
-                      disabled={!!busy || invalidAmount || !!pendingExit}
-                      onClick={() => void act(action)}
-                    >
-                      {busy === action ? (
-                        <LoaderCircle className="spin" size={14} />
-                      ) : null}
-                      {action === "mint"
-                        ? "1. Get test tokens"
-                        : action === "approve"
-                          ? "2. Allow this amount"
-                          : action === "quote"
-                            ? "3. Preview exit"
-                            : "Check transfer protection"}
-                    </button>
-                  ))}
-                </div>
-                {quote && (
-                  <button
-                    className="button dark full-width"
-                    disabled={!!busy || quoteExpired || !!pendingExit}
-                    onClick={() => void act("execute")}
                   >
-                    {quoteExpired
-                      ? "Preview expired — request a new one"
-                      : "Confirm testnet exit · minimum"}{" "}
-                    {(
-                      Number((BigInt(quote.amountOut) * 99n) / 100n) / 1e6
-                    ).toFixed(4)}{" "}
-                    test USDC
+                    Sign out
                   </button>
-                )}
+                </div>
               </>
             )}
-            {!process.env.NEXT_PUBLIC_EXIT_EXECUTOR_ADDRESS && (
-              <p style={{ marginTop: 20 }}>
-                Testnet exits are temporarily unavailable. You can still run a
-                rehearsal without a wallet.
-              </p>
-            )}
-            {message && (
-              <div
-                role="status"
-                className="alert notice"
-                style={{ marginTop: 20 }}
-              >
-                {message}
-              </div>
-            )}
-            {hash && (
-              <a
-                className="docs-link"
-                href={`https://sepolia.etherscan.io/tx/${hash}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View transaction <ExternalLink size={14} />
-              </a>
-            )}
-            {pendingExit && (
-              <div className="wallet-help">
-                <p>
-                  Your last exit is awaiting reconciliation. Check confirmation
-                  before starting another exit.
-                </p>
-                <a
-                  className="docs-link"
-                  href={`https://sepolia.etherscan.io/tx/${pendingExit}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View pending exit <ExternalLink size={14} />
-                </a>
-                <button
-                  className="button light"
-                  disabled={!!busy}
-                  onClick={() => void recover()}
-                >
-                  <Check size={15} />
-                  Recover receipt
-                </button>
-              </div>
-            )}
-            <a
-              className="docs-link"
-              href="/docs#wallet"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Read the wallet guide <ExternalLink size={14} />
-            </a>
-            <button
-              className="button light compact"
-              style={{ marginTop: 20, display: "flex" }}
-              disabled={!!busy}
-              onClick={() => {
-                setOpen(false);
-                setWallet(null);
-                setQuote(null);
-                setHash("");
-                setMessage("");
-                void logout();
-              }}
-            >
-              Sign out
-            </button>
           </section>
         </div>
       )}
     </>
   );
 }
-export default function LiveWallet({
-  onReceipt,
-}: {
-  onReceipt: (r: Receipt) => void;
-}) {
+export default function LiveWallet(props: Props) {
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
       config={{
         loginMethods: ["email", "wallet"],
-        appearance: { theme: "light", accentColor: "#20221f" },
-        defaultChain: sepolia,
-        supportedChains: [sepolia],
+        appearance: {
+          theme: "light",
+          accentColor: "#20221f",
+          walletChainType: "ethereum-only",
+        },
       }}
     >
-      <WalletControl onReceipt={onReceipt} />
+      <WalletControl {...props} />
     </PrivyProvider>
   );
 }

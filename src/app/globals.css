@@ -1796,6 +1796,113 @@ td:first-child {
 .wallet-help p {
   margin: 0 0 12px;
 }
+.account-strip {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  border: 2px solid var(--ink, #20221f);
+  background: white;
+  margin: 24px 0;
+  box-shadow: 4px 4px 0 #20221f;
+}
+.account-strip > div {
+  padding: 18px;
+  border-right: 1px solid #ccd1c7;
+  min-width: 0;
+}
+.account-strip > div:last-child {
+  border: 0;
+}
+.account-strip strong {
+  display: block;
+  font-size: 16px;
+  margin-top: 9px;
+  overflow-wrap: anywhere;
+}
+.wallet-address {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid #20221f;
+  margin: 18px 0;
+  font-size: 13px;
+}
+.wallet-address span {
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+.wallet-balances {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 2px solid #20221f;
+  background: #f5f7ec;
+}
+.wallet-balances > div {
+  padding: 14px;
+  min-width: 0;
+}
+.wallet-balances small {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.wallet-balances strong {
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+.wallet-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+}
+.wallet-form {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 16px;
+  margin: 24px 0;
+}
+.wallet-form label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.wallet-form input,
+.wallet-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 13px;
+  border: 2px solid #20221f;
+  background: white;
+  margin-top: 8px;
+  color: #20221f;
+}
+.wallet-disclosure {
+  font-size: 13px !important;
+  line-height: 1.65;
+  margin: 14px 0;
+  color: #58604f;
+}
+.wallet-validation {
+  font-size: 14px !important;
+  color: #a13d21;
+  margin: 12px 0;
+}
+@media (max-width: 700px) {
+  .account-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .account-strip > div {
+    padding: 14px;
+  }
+  .wallet-balances strong {
+    font-size: 16px;
+  }
+  .wallet-balances > div {
+    padding: 10px;
+  }
+}
 .wallet-help .docs-link {
   margin: 12px 0;
 }
