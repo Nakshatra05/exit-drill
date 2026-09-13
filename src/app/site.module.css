@@ -111,14 +111,22 @@
   background: #20221f;
 }
 .heroCopy h1 {
-  font-size: clamp(58px, 6.4vw, 94px);
-  line-height: 1.02;
-  letter-spacing: -5px;
+  font-size: clamp(42px, 6.4vw, 94px);
+  line-height: 1.16;
+  letter-spacing: -0.05em;
   font-weight: 600;
   margin: 27px 0;
+  display: grid;
+  gap: 0.08em;
 }
 .heroCopy h1 > span {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+}
+.heroCopy h1 > span:last-child {
   background: #c6f14a;
+  padding: 0 0.035em 0.08em;
   box-shadow:
     8px 0 #c6f14a,
     -3px 0 #c6f14a;
@@ -722,8 +730,7 @@
     padding-top: 65px;
   }
   .heroCopy h1 {
-    font-size: 65px;
-    letter-spacing: -3.5px;
+    font-size: clamp(42px, 6.4vw, 64px);
   }
   .heroCopy > p {
     font-size: 15px;
@@ -816,8 +823,8 @@
     padding-bottom: 70px;
   }
   .heroCopy h1 {
-    font-size: 65px;
-    letter-spacing: -3.5px;
+    font-size: clamp(44px, 10.6vw, 65px);
+    letter-spacing: -0.05em;
     margin-top: 25px;
   }
   .heroCopy > p {

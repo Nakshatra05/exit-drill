@@ -22,10 +22,8 @@ export default function Page() {
               <span className={s.dot} /> BUILT FOR TREASURY TEAMS
             </span>
             <h1>
-              Your balance
-              <br />
-              isn’t your
-              <br />
+              <span>Your balance</span>
+              <span>isn’t your</span>
               <span>exit plan.</span>
             </h1>
             <p>
@@ -34,26 +32,26 @@ export default function Page() {
             </p>
             <div className={s.actions}>
               <Link className={s.primary} href="/app">
-                Run your first drill <ArrowUpRight size={21} />
+                Analyze your treasury <ArrowUpRight size={21} />
               </Link>
               <Link className={s.textLink} href="/docs">
                 Read the guide <ArrowRight size={17} />
               </Link>
             </div>
             <div className={s.heroNote}>
-              <Check size={15} /> No wallet required <span>·</span> No real
-              funds at risk
+              <Check size={15} /> Live market analysis <span>·</span> Clear exit
+              limits
             </div>
           </div>
           <div
             className={s.heroVisual}
-            aria-label="Reference scenario: 30 WETH, 25 percent price shock, 54,896 dollars executable cash and 5,104 dollars payroll shortfall"
+            aria-label="Illustrative analysis: 30 WETH, 25 percent price shock, 54,896 dollars executable cash and 5,104 dollars payroll shortfall"
           >
             <div className={s.visualTop}>
               <span>
                 <Activity size={17} /> EXIT READINESS / 001
               </span>
-              <span className={s.sampleTag}>REFERENCE SCENARIO</span>
+              <span className={s.sampleTag}>ILLUSTRATIVE ANALYSIS</span>
             </div>
             <div className={s.visualPosition}>
               <div>
@@ -102,9 +100,9 @@ export default function Page() {
             <div className={s.proofStamp}>
               <ShieldCheck size={22} />
               <span>
-                REAL UNISWAP V3
+                CLEAR EXIT LIMITS
                 <br />
-                <b>Isolated EVM execution</b>
+                <b>Verified settlement receipts</b>
               </span>
             </div>
           </div>
@@ -130,7 +128,7 @@ export default function Page() {
           <div className={s.sectionHeading}>
             <span className={s.eyebrow}>01 / FROM BALANCE TO READINESS</span>
             <h2>
-              Rehearse the bad day.
+              Plan for the bad day.
               <br />
               Make a better decision.
             </h2>
@@ -180,11 +178,12 @@ export default function Page() {
               Test what gets blocked.
             </h2>
             <p>
-              Try swapping the recipient in the demo. The contract rejects it.
-              Your exit plan has rules that survive execution.
+              Set the amount and minimum received before confirming. Proceeds
+              return to your treasury, and the contract rejects exits outside
+              those limits.
             </p>
             <Link className={s.primary} href="/app">
-              Try the rejection drill <ArrowUpRight size={20} />
+              Review your exit limits <ArrowUpRight size={20} />
             </Link>
           </div>
           <div className={s.policyCard}>
@@ -228,18 +227,18 @@ export default function Page() {
             </div>
             <div>
               <p>
-                Rehearse with current Ethereum market data or start with a
-                repeatable example. Compare stressed outcomes without moving
-                your wallet’s funds.
+                Analyze current Ethereum liquidity, review your treasury’s
+                balances, and see how a market shock could affect your next
+                exit.
               </p>
               <p>
-                Ready to try a wallet transaction? Use the Sepolia test network
-                with valueless test tokens, review a fresh quote, and keep a
-                verified receipt. Rehearsal results are estimates, never
-                guaranteed mainnet fills.
+                This release settles on Sepolia. Sign in, review a current
+                quote, set your limits, and confirm the transaction. Your
+                receipt records what arrived. Stress analysis remains an
+                estimate; it is separate from the execution quote.
               </p>
               <Link className={s.textLink} href="/docs#market-data">
-                Find the right workflow for you <ArrowRight size={17} />
+                Read the user guide <ArrowRight size={17} />
               </Link>
             </div>
           </div>
@@ -248,10 +247,10 @@ export default function Page() {
           <span className={s.eyebrow}>READY WHEN THE MARKET ISN’T.</span>
           <h2>
             Make your next exit
-            <br />a rehearsed one.
+            <br />a considered one.
           </h2>
           <Link className={s.darkButton} href="/app">
-            Open the stress lab <ArrowUpRight size={22} />
+            Open your treasury <ArrowUpRight size={22} />
           </Link>
           <span className={s.ctaFoot}>
             30 WETH. One price shock. A result you can act on.
