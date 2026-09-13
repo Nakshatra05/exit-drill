@@ -484,86 +484,96 @@ export default function Dashboard({
                   <ArrowRight size={16} />
                 </button>
               </section>
-              <section className="metrics" aria-label="Treasury metrics">
-                <article className="metric">
-                  <div className="metric-label">
-                    AMOUNT TO ANALYZE <Wallet size={17} />
-                  </div>
-                  <div className="metric-number">
-                    {input.amountEth > 0
-                      ? input.amountEth.toLocaleString(undefined, {
-                          maximumFractionDigits: 8,
-                        })
-                      : "—"}{" "}
-                    <span>WETH</span>
-                  </div>
-                  <div className="metric-foot">
-                    {input.amountEth > 0
-                      ? "Your selected exit amount"
-                      : "Choose an amount below"}
-                  </div>
-                </article>
-                <article className="metric">
-                  <div className="metric-label">
-                    CASH TARGET <ArrowDownLeft size={18} />
-                  </div>
-                  <div className="metric-number">
-                    {input.payrollUsdc > 0 ? money(input.payrollUsdc, 2) : "—"}
-                  </div>
-                  <div className="metric-foot">
-                    <span className="muted-square" />
-                    {input.payrollUsdc > 0
-                      ? "Your entered USDC target"
-                      : "Enter your cash requirement"}
-                  </div>
-                </article>
-                <article className="metric lime">
-                  <div className="metric-label">
-                    ESTIMATED STRESSED OUTPUT <Activity size={18} />
-                  </div>
-                  <div className="metric-number">
-                    {result ? money(result.amountOutUsdc) : "—"}
-                    <span className="metric-unit">{result ? " USDC" : ""}</span>
-                  </div>
-                  <div className="metric-foot">
-                    {result ? (
-                      <>
-                        <span className="status-dot" />
-                        After {input.shockPercent}% price shock
-                      </>
-                    ) : (
-                      <>
-                        Optional risk analysis <ArrowRight size={14} />
-                      </>
-                    )}
-                  </div>
-                </article>
-                <article className="metric">
-                  <div className="metric-label">
-                    TARGET COVERAGE <ShieldCheck size={18} />
-                  </div>
-                  <div
-                    className={`metric-number ${coverage !== undefined && coverage < 100 ? "negative" : ""}`}
-                  >
-                    {coverage === undefined ? "—" : `${coverage.toFixed(1)}%`}
-                  </div>
-                  <div className="metric-foot">
-                    {coverage === undefined ? (
-                      "No risk analysis yet"
-                    ) : coverage >= 100 ? (
-                      <>
-                        <span className="status-dot" />
-                        Obligation covered
-                      </>
-                    ) : (
-                      <>
-                        <AlertTriangle size={14} />
-                        {money(result!.shortfallUsdc)} shortfall
-                      </>
-                    )}
-                  </div>
-                </article>
-              </section>
+              {result && (
+                <>
+                  <section className="metrics" aria-label="Treasury metrics">
+                    <article className="metric">
+                      <div className="metric-label">
+                        SELECTED EXIT AMOUNT <Wallet size={17} />
+                      </div>
+                      <div className="metric-number">
+                        {input.amountEth > 0
+                          ? input.amountEth.toLocaleString(undefined, {
+                              maximumFractionDigits: 8,
+                            })
+                          : "—"}{" "}
+                        <span>WETH</span>
+                      </div>
+                      <div className="metric-foot">
+                        {input.amountEth > 0
+                          ? "Your selected exit amount"
+                          : "Choose an amount below"}
+                      </div>
+                    </article>
+                    <article className="metric">
+                      <div className="metric-label">
+                        CASH TARGET <ArrowDownLeft size={18} />
+                      </div>
+                      <div className="metric-number">
+                        {input.payrollUsdc > 0
+                          ? money(input.payrollUsdc, 2)
+                          : "—"}
+                      </div>
+                      <div className="metric-foot">
+                        <span className="muted-square" />
+                        {input.payrollUsdc > 0
+                          ? "Your entered USDC target"
+                          : "Enter your cash requirement"}
+                      </div>
+                    </article>
+                    <article className="metric lime">
+                      <div className="metric-label">
+                        ESTIMATED STRESSED OUTPUT <Activity size={18} />
+                      </div>
+                      <div className="metric-number">
+                        {result ? money(result.amountOutUsdc) : "—"}
+                        <span className="metric-unit">
+                          {result ? " USDC" : ""}
+                        </span>
+                      </div>
+                      <div className="metric-foot">
+                        {result ? (
+                          <>
+                            <span className="status-dot" />
+                            After {input.shockPercent}% price shock
+                          </>
+                        ) : (
+                          <>
+                            Optional risk analysis <ArrowRight size={14} />
+                          </>
+                        )}
+                      </div>
+                    </article>
+                    <article className="metric">
+                      <div className="metric-label">
+                        TARGET COVERAGE <ShieldCheck size={18} />
+                      </div>
+                      <div
+                        className={`metric-number ${coverage !== undefined && coverage < 100 ? "negative" : ""}`}
+                      >
+                        {coverage === undefined
+                          ? "—"
+                          : `${coverage.toFixed(1)}%`}
+                      </div>
+                      <div className="metric-foot">
+                        {coverage === undefined ? (
+                          "No risk analysis yet"
+                        ) : coverage >= 100 ? (
+                          <>
+                            <span className="status-dot" />
+                            Obligation covered
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle size={14} />
+                            {money(result!.shortfallUsdc)} shortfall
+                          </>
+                        )}
+                      </div>
+                    </article>
+                  </section>
+                </>
+              )}
               <div className="dashboard-grid">
                 <section
                   className="panel stress-panel"
@@ -715,220 +725,263 @@ export default function Dashboard({
                     )}
                   </details>
                 </section>
-                <section className="panel outcome-panel">
+                {result ? (
+                  <>
+                    <section className="panel outcome-panel">
+                      <div className="panel-heading">
+                        <div>
+                          <span className="section-index">02 / COMPARE</span>
+                          <h2>Your exit, under pressure.</h2>
+                        </div>
+                        <span className="outline-tag">USDC</span>
+                      </div>
+                      <div className="chart-legend">
+                        <span>
+                          <i className="legend-baseline" />
+                          Normal conditions
+                        </span>
+                        <span>
+                          <i className="legend-stress" />
+                          After shock
+                        </span>
+                        <span>
+                          <i className="legend-target" />
+                          Cash target
+                        </span>
+                      </div>
+                      <div
+                        className="cash-chart"
+                        role="img"
+                        aria-label={
+                          result
+                            ? `Baseline ${money(result.baselineUsdc)}, stressed ${money(result.amountOutUsdc)}, obligation ${money(input.payrollUsdc)}`
+                            : "Run optional risk analysis to compare cash coverage"
+                        }
+                      >
+                        {result ? (
+                          <>
+                            <div className="chart-grid">
+                              <span>
+                                {money(
+                                  Math.max(chartMaximum, input.payrollUsdc) *
+                                    1.2,
+                                )}
+                              </span>
+                              <span>
+                                {money(
+                                  Math.max(chartMaximum, input.payrollUsdc) *
+                                    0.8,
+                                )}
+                              </span>
+                              <span>
+                                {money(
+                                  Math.max(chartMaximum, input.payrollUsdc) *
+                                    0.4,
+                                )}
+                              </span>
+                              <span>$0</span>
+                            </div>
+                            <div className="bars">
+                              <div className="bar-column">
+                                <strong>
+                                  {result
+                                    ? money(result.baselineUsdc)
+                                    : "No analysis yet"}
+                                </strong>
+                                <div
+                                  className="bar baseline"
+                                  style={{
+                                    height: result
+                                      ? `${Math.min(95, (result.baselineUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`
+                                      : "4%",
+                                  }}
+                                />
+                                <span>Before shock</span>
+                              </div>
+                              <div className="bar-column">
+                                <strong>
+                                  {result
+                                    ? money(result.amountOutUsdc)
+                                    : "No analysis yet"}
+                                </strong>
+                                <div
+                                  className="bar stressed"
+                                  style={{
+                                    height: result
+                                      ? `${Math.min(95, (result.amountOutUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`
+                                      : "4%",
+                                  }}
+                                />
+                                <span>After shock</span>
+                              </div>
+                              <div
+                                className="target-line"
+                                style={{
+                                  bottom: `${Math.min(90, (input.payrollUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`,
+                                }}
+                              >
+                                <span>Cash target</span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="chart-empty">
+                            Your results will appear here after you enter your
+                            exit details and run an analysis.
+                          </div>
+                        )}
+                      </div>
+                      <div className="outcome-summary">
+                        <span
+                          className={`summary-icon ${result && result.shortfallUsdc > 0 ? "amber" : ""}`}
+                        >
+                          {result ? (
+                            result.shortfallUsdc > 0 ? (
+                              <AlertTriangle size={20} />
+                            ) : (
+                              <ShieldCheck size={20} />
+                            )
+                          ) : (
+                            <Activity size={20} />
+                          )}
+                        </span>
+                        <div>
+                          <strong>
+                            {result
+                              ? result.shortfallUsdc > 0
+                                ? "A balance is not a cash guarantee."
+                                : "Your cash target survives this scenario."
+                              : "Get a result you can act on."}
+                          </strong>
+                          <p>
+                            {result
+                              ? `${money(result.shortfallUsdc)} shortfall · ${(result.selectedFee / 10000).toFixed(2)}% fee tier selected`
+                              : "Compare executable cash with your obligation."}
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+                  </>
+                ) : (
+                  <section className="panel settlement-guide">
+                    <span className="section-index">FROM WETH TO USDC</span>
+                    <h2>Your exit, step by step.</h2>
+                    <ol>
+                      <li>
+                        <strong>Choose what to sell</strong>
+                        <p>
+                          Enter WETH from your actual treasury balance. Your
+                          Sepolia ETH covers the transaction fees.
+                        </p>
+                      </li>
+                      <li>
+                        <strong>Approve and review</strong>
+                        <p>
+                          Approve only the selected amount, then review the USDC
+                          quote, minimum received, and expiry.
+                        </p>
+                      </li>
+                      <li>
+                        <strong>Confirm and collect your receipt</strong>
+                        <p>
+                          USDC settles back into your treasury. The receipt
+                          links to the confirmed Sepolia transaction.
+                        </p>
+                      </li>
+                    </ol>
+                    <a className="docs-link" href="/docs#quickstart">
+                      Read the trading guide <ArrowRight size={14} />
+                    </a>
+                  </section>
+                )}
+              </div>
+              <details className="market-details">
+                <summary>
+                  Ethereum market data for optional risk analysis
+                </summary>
+                <section className="panel liquidity-panel">
                   <div className="panel-heading">
                     <div>
-                      <span className="section-index">02 / COMPARE</span>
-                      <h2>Your exit, under pressure.</h2>
+                      <span className="section-index">SOURCE INTELLIGENCE</span>
+                      <h2>Two routes. One informed exit.</h2>
                     </div>
-                    <span className="outline-tag">USDC</span>
-                  </div>
-                  <div className="chart-legend">
-                    <span>
-                      <i className="legend-baseline" />
-                      Normal conditions
-                    </span>
-                    <span>
-                      <i className="legend-stress" />
-                      After shock
-                    </span>
-                    <span>
-                      <i className="legend-target" />
-                      Cash target
+                    <span className="data-badge">
+                      <Database size={14} />
+                      {mode === "graph" ? "THE GRAPH" : "REFERENCE POOLS"}
                     </span>
                   </div>
-                  <div
-                    className="cash-chart"
-                    role="img"
-                    aria-label={
-                      result
-                        ? `Baseline ${money(result.baselineUsdc)}, stressed ${money(result.amountOutUsdc)}, obligation ${money(input.payrollUsdc)}`
-                        : "Run optional risk analysis to compare cash coverage"
-                    }
-                  >
-                    {result ? (
-                      <>
-                        <div className="chart-grid">
-                          <span>
-                            {money(
-                              Math.max(chartMaximum, input.payrollUsdc) * 1.2,
-                            )}
-                          </span>
-                          <span>
-                            {money(
-                              Math.max(chartMaximum, input.payrollUsdc) * 0.8,
-                            )}
-                          </span>
-                          <span>
-                            {money(
-                              Math.max(chartMaximum, input.payrollUsdc) * 0.4,
-                            )}
-                          </span>
-                          <span>$0</span>
-                        </div>
-                        <div className="bars">
-                          <div className="bar-column">
-                            <strong>
-                              {result
-                                ? money(result.baselineUsdc)
-                                : "No analysis yet"}
-                            </strong>
-                            <div
-                              className="bar baseline"
-                              style={{
-                                height: result
-                                  ? `${Math.min(95, (result.baselineUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`
-                                  : "4%",
-                              }}
-                            />
-                            <span>Before shock</span>
-                          </div>
-                          <div className="bar-column">
-                            <strong>
-                              {result
-                                ? money(result.amountOutUsdc)
-                                : "No analysis yet"}
-                            </strong>
-                            <div
-                              className="bar stressed"
-                              style={{
-                                height: result
-                                  ? `${Math.min(95, (result.amountOutUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`
-                                  : "4%",
-                              }}
-                            />
-                            <span>After shock</span>
-                          </div>
-                          <div
-                            className="target-line"
-                            style={{
-                              bottom: `${Math.min(90, (input.payrollUsdc / Math.max(chartMaximum, input.payrollUsdc) / 1.2) * 100)}%`,
-                            }}
-                          >
-                            <span>Cash target</span>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="chart-empty">
-                        Your results will appear here after you enter your exit
-                        details and run an analysis.
-                      </div>
-                    )}
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>POOL / VENUE</th>
+                          <th>FEE TIER</th>
+                          <th>LIQUIDITY (TVL)</th>
+                          <th>24H VOLUME</th>
+                          <th>STRESSED OUTPUT</th>
+                          <th>ROUTE</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(evidence?.pools ?? []).slice(0, 4).map((p) => {
+                          const route = result?.routes.find(
+                            (r) => r.feeTier === p.feeTier,
+                          );
+                          return (
+                            <tr key={p.id}>
+                              <td>
+                                <div className="token-pair">
+                                  <span className="eth-token">Ξ</span>
+                                  <span className="usdc-token">$</span>
+                                  <span>
+                                    <strong>WETH / USDC</strong>
+                                    <small>Uniswap v3</small>
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <span className="fee-tag">
+                                  {(p.feeTier / 10000).toFixed(2)}%
+                                </span>
+                              </td>
+                              <td>{money(p.tvlUsd)}</td>
+                              <td>{money(p.volume24h)}</td>
+                              <td className="table-output">
+                                {route ? money(route.stressedUsdc, 2) : "—"}
+                              </td>
+                              <td>
+                                {result?.selectedFee === p.feeTier ? (
+                                  <span className="best-route">
+                                    <Check size={13} />
+                                    BEST EXIT
+                                  </span>
+                                ) : (
+                                  <span className="subtle">
+                                    {route ? "Compared" : "Not tested"}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="outcome-summary">
-                    <span
-                      className={`summary-icon ${result && result.shortfallUsdc > 0 ? "amber" : ""}`}
-                    >
-                      {result ? (
-                        result.shortfallUsdc > 0 ? (
-                          <AlertTriangle size={20} />
-                        ) : (
-                          <ShieldCheck size={20} />
-                        )
-                      ) : (
-                        <Activity size={20} />
-                      )}
+                  <div className="table-footer">
+                    <span>
+                      <span className="status-dot" />
+                      {evidence
+                        ? `${mode === "graph" ? `Block ${evidence.block.toLocaleString()}` : "Market snapshot"} · ${money(totalTvl)} total TVL`
+                        : "Loading source evidence…"}
                     </span>
-                    <div>
-                      <strong>
-                        {result
-                          ? result.shortfallUsdc > 0
-                            ? "A balance is not a cash guarantee."
-                            : "Your cash target survives this scenario."
-                          : "Get a result you can act on."}
-                      </strong>
-                      <p>
-                        {result
-                          ? `${money(result.shortfallUsdc)} shortfall · ${(result.selectedFee / 10000).toFixed(2)}% fee tier selected`
-                          : "Compare executable cash with your obligation."}
-                      </p>
-                    </div>
+                    <span>
+                      {mode === "graph"
+                        ? "Ethereum market data · modeled output"
+                        : "No real funds at risk"}
+                    </span>
                   </div>
                 </section>
-              </div>
-              <section className="panel liquidity-panel">
-                <div className="panel-heading">
-                  <div>
-                    <span className="section-index">SOURCE INTELLIGENCE</span>
-                    <h2>Two routes. One informed exit.</h2>
-                  </div>
-                  <span className="data-badge">
-                    <Database size={14} />
-                    {mode === "graph" ? "THE GRAPH" : "REFERENCE POOLS"}
-                  </span>
-                </div>
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>POOL / VENUE</th>
-                        <th>FEE TIER</th>
-                        <th>LIQUIDITY (TVL)</th>
-                        <th>24H VOLUME</th>
-                        <th>STRESSED OUTPUT</th>
-                        <th>ROUTE</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(evidence?.pools ?? []).slice(0, 4).map((p) => {
-                        const route = result?.routes.find(
-                          (r) => r.feeTier === p.feeTier,
-                        );
-                        return (
-                          <tr key={p.id}>
-                            <td>
-                              <div className="token-pair">
-                                <span className="eth-token">Ξ</span>
-                                <span className="usdc-token">$</span>
-                                <span>
-                                  <strong>WETH / USDC</strong>
-                                  <small>Uniswap v3</small>
-                                </span>
-                              </div>
-                            </td>
-                            <td>
-                              <span className="fee-tag">
-                                {(p.feeTier / 10000).toFixed(2)}%
-                              </span>
-                            </td>
-                            <td>{money(p.tvlUsd)}</td>
-                            <td>{money(p.volume24h)}</td>
-                            <td className="table-output">
-                              {route ? money(route.stressedUsdc, 2) : "—"}
-                            </td>
-                            <td>
-                              {result?.selectedFee === p.feeTier ? (
-                                <span className="best-route">
-                                  <Check size={13} />
-                                  BEST EXIT
-                                </span>
-                              ) : (
-                                <span className="subtle">
-                                  {route ? "Compared" : "Not tested"}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="table-footer">
-                  <span>
-                    <span className="status-dot" />
-                    {evidence
-                      ? `${mode === "graph" ? `Block ${evidence.block.toLocaleString()}` : "Market snapshot"} · ${money(totalTvl)} total TVL`
-                      : "Loading source evidence…"}
-                  </span>
-                  <span>
-                    {mode === "graph"
-                      ? "Ethereum market data · modeled output"
-                      : "No real funds at risk"}
-                  </span>
-                </div>
-              </section>
+              </details>
               <section className="execution-strip">
                 <div className="execution-icon">
                   <LockKeyhole size={24} />
@@ -1063,8 +1116,7 @@ export default function Dashboard({
                     <div className="receipt-top">
                       <span className="best-route">
                         <CheckCheck size={14} />
-                        CONFIRMED ·{" "}
-                        SEPOLIA TESTNET
+                        CONFIRMED · SEPOLIA TESTNET
                       </span>
                       <span>{new Date(r.createdAt).toLocaleString()}</span>
                     </div>

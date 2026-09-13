@@ -1822,6 +1822,38 @@ td:first-child {
   font-size: 13px;
   font-weight: 600;
 }
+.settlement-guide {
+  padding: 24px;
+}
+.settlement-guide h2 {
+  font-size: 24px;
+  margin: 12px 0 24px;
+}
+.settlement-guide ol {
+  padding-left: 22px;
+}
+.settlement-guide li {
+  padding-left: 7px;
+  margin: 0 0 24px;
+}
+.settlement-guide li::marker {
+  font-weight: 700;
+}
+.settlement-guide p {
+  line-height: 1.7;
+  font-size: 13px;
+  color: #60655c;
+  margin: 7px 0 0;
+}
+.market-details {
+  margin: 24px 0;
+}
+.market-details > summary {
+  cursor: pointer;
+  padding: 16px;
+  border: 1px solid #bbb;
+  font-size: 13px;
+}
 .risk-options {
   border-top: 1px solid #bbb;
   padding-top: 20px;
