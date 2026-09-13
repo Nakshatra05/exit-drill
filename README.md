@@ -6,6 +6,8 @@ A Sepolia treasury exit application for ETHOnline 2026. Fund a managed treasury,
 
 ## Use the app
 
+[Project walkthrough](https://exit-drill.vercel.app/project) · [Independent settlement verifier](https://exit-drill.vercel.app/verify) · [Graph-powered MCP toolkit](tools/exit-risk-mcp/README.md) · [Submission packet](submission/SUBMISSION.md)
+
 Visit [the landing page](https://exit-drill.vercel.app), [the exit planner](https://exit-drill.vercel.app/app), or [the documentation](https://exit-drill.vercel.app/docs).
 
 1. Follow **Your next step**: sign in, open the managed Sepolia treasury, and fund its displayed address with Sepolia ETH for network fees. Enter how much test WETH you want and request it using the treasury's funding button.
@@ -34,6 +36,10 @@ Live demo: **https://exit-drill.vercel.app**. Run `npm run test:smoke -- https:/
 
 ## Architecture
 
+- **Reusable AI tooling:** `tools/exit-risk-mcp/server.ts` exposes live Graph evidence, a reasoned exit assessment, and same-snapshot shock comparisons to MCP hosts. It runs independently of this website and has no signing or execution tools. The host supplies the language model; financial calculations use the shared EVM engine.
+- **Portable evidence:** `src/lib/exit-brief.ts` produces a downloadable decision brief with source block, route comparison, cash coverage, assumptions and a human-confirmed execution handoff.
+- **Independent verification:** `src/lib/verify-settlement.ts` recomputes the onchain plan hash and checks the executor, sender, event and token movements without a Privy account. It verifies settlement, not historical policy or model accuracy.
+
 - **Evidence:** `src/lib/graph.ts` queries a Uniswap v3 subgraph server-side and rejects stale/missing metadata or indexing errors. The dashboard uses Ethereum data with no synthetic fallback. Historical timestamps are verified against the exact Ethereum block when Graph Node omits them.
 - **Stress engine:** `src/lib/sandbox.ts` deploys full-range liquidity pools, applies competing sells targeting a marginal price decline, and uses snapshots/reverts to compare exits through real Uniswap bytecode.
 - **Authorization:** Privy verifies user JWTs and creates an app-managed treasury with a signing policy restricted to Sepolia and fixed contract methods. `/api/privy/balance` verifies treasury ownership before reading balances and allowance. External wallet sign-in only identifies the account; it does not switch networks or submit external-wallet transactions.
@@ -42,6 +48,12 @@ Live demo: **https://exit-drill.vercel.app**. Run `npm run test:smoke -- https:/
 - **Frontend:** React/Next.js with a responsive neobrutalist dashboard, scenarios, route comparison, treasury funding, quote review, pending-transaction recovery and confirmed receipt inspection.
 
 ## Configuration
+
+### Integration source map
+
+- The Graph: [live adapter](https://github.com/Nakshatra05/exit-drill/blob/main/src/lib/graph.ts#L5) and [reusable MCP tools](https://github.com/Nakshatra05/exit-drill/blob/main/tools/exit-risk-mcp/server.ts).
+- Privy: [wallet and policy provisioning](https://github.com/Nakshatra05/exit-drill/blob/main/src/lib/privy.ts#L28) and [ownership authorization](https://github.com/Nakshatra05/exit-drill/blob/main/src/lib/privy.ts#L198).
+- Uniswap: [official-bytecode risk engine](https://github.com/Nakshatra05/exit-drill/blob/main/src/lib/sandbox.ts#L296), [guarded executor](https://github.com/Nakshatra05/exit-drill/blob/main/contracts/ExitExecutor.sol#L31), [settlement verifier](https://github.com/Nakshatra05/exit-drill/blob/main/src/lib/verify-settlement.ts#L24), and [deployed Sepolia addresses](deployments/sepolia.json).
 
 Copy `.env.example` to `.env.local`. Keep secrets out of git and chat. The product requires the configured Graph and Privy services below; developer reference tests do not.
 
@@ -82,11 +94,15 @@ Tests cover actual Uniswap execution, stress, route selection, receipt reconcili
 
 This is a hackathon MVP, **not an audited custody system**. Dashboard calculations use JavaScript numbers; contracts use integer token units. No price oracle, gas-aware optimization, durable database, distributed limiter or mainnet signing is included. Per-instance rate limiting provides basic backpressure, not global abuse protection. Ganache and wallet SDK transitive dependencies have known audit advisories: review and isolate/replace the sandbox before handling production assets. Test tokens allow public minting. Privy wallets and policies are app-managed. Protect the server app secret; it controls these resources. Users have no direct policy-edit endpoint. Sandbox approval is UI consent, not a cryptographic signature or server-held spending mandate.
 
-No LLM integration is represented as complete. Confirm sponsor eligibility against current rules before submitting to an AI-specific prize.
+The MCP toolkit targets The Graph's AI tooling category as reusable infrastructure for external AI hosts. It is not an embedded chatbot or autonomous trader. Protocol discovery, input rejection, stdio startup and live same-block shock comparison are tested. A single subgraph query is not presented as qualifying for the composable-data category.
+
+## Hackathon handoff
+
+Read the [submission draft](submission/SUBMISSION.md), [human-narrated demo script](submission/DEMO-SCRIPT.md), and [remaining submission checklist](submission/READINESS.md). [FEEDBACK.md](FEEDBACK.md) records Uniswap developer feedback; its required external form has not been submitted. Team/track confirmation and a human-narrated video remain team responsibilities.
 
 ## Attribution
 
-Implemented with Codex assistance directed by the project owner during ETHOnline 2026. Third-party dependencies are locked in package-lock.json.
+Implemented with extensive Codex assistance directed by the project owner during ETHOnline 2026. Read [AI attribution](AI_ATTRIBUTION.md) and the [sanitized requirements](submission/REQUIREMENTS.md). Third-party dependencies are locked in package-lock.json.
 
 - [Uniswap v3 core](https://github.com/Uniswap/v3-core) and [periphery](https://github.com/Uniswap/v3-periphery): official package artifacts; upstream licenses apply.
 - [The Graph documentation](https://thegraph.com/docs/)
