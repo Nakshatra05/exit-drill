@@ -1,11 +1,11 @@
 import { authorizeWallet, liveConfig } from "@/lib/privy";
+import { walletError } from "@/lib/wallet-errors";
 import {
   createPublicClient,
   http,
   encodeFunctionData,
   parseAbi,
   parseUnits,
-  toHex,
   type Abi,
   type Address,
 } from "viem";
@@ -33,10 +33,7 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     const body = schema.parse(await request.json());
-    const { client, jwt, wallet } = await authorizeWallet(
-      request,
-      body.walletId,
-    );
+    const { client, wallet } = await authorizeWallet(request, body.walletId);
     const { executor, token } = liveConfig();
     const rpc = createPublicClient({
       chain: sepolia,
@@ -118,7 +115,6 @@ export async function POST(request: Request) {
       .sendTransaction(wallet.id, {
         caip2: "eip155:11155111",
         params: { transaction: { to, data, value: "0x0", chain_id: 11155111 } },
-        authorization_context: { user_jwts: [jwt] },
         idempotency_key: `${wallet.id}-${body.action}-${p.nonce}`,
       });
     return Response.json({
@@ -127,7 +123,12 @@ export async function POST(request: Request) {
       action: body.action,
     });
   } catch (e) {
-    const text = e instanceof Error ? e.message : "Privy action failed";
-    return Response.json({ error: text.slice(0, 240) }, { status: 400 });
+    if (e instanceof z.ZodError)
+      return Response.json(
+        { error: "Check the amount and request a fresh preview." },
+        { status: 400 },
+      );
+    const { error, status } = walletError(e);
+    return Response.json({ error }, { status });
   }
 }

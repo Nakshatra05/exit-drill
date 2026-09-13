@@ -190,7 +190,10 @@ export default function Dashboard({
       });
       if (!violation) {
         setReceipt(r);
-        const next = [r, ...receipts].slice(0, 20);
+        const next = [r, ...receipts.filter((old) => old.id !== r.id)].slice(
+          0,
+          20,
+        );
         setReceipts(next);
         try {
           localStorage.setItem("exit-drill-receipts-v1", JSON.stringify(next));
@@ -333,7 +336,10 @@ export default function Dashboard({
             {process.env.NEXT_PUBLIC_PRIVY_APP_ID ? (
               <LiveWallet
                 onReceipt={(r) => {
-                  const next = [r, ...receipts].slice(0, 20);
+                  const next = [
+                    r,
+                    ...receipts.filter((old) => old.id !== r.id),
+                  ].slice(0, 20);
                   setReceipts(next);
                   try {
                     localStorage.setItem(

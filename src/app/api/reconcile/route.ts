@@ -1,4 +1,5 @@
 import { authenticate, liveConfig } from "@/lib/privy";
+import { walletError } from "@/lib/wallet-errors";
 import {
   createPublicClient,
   http,
@@ -12,7 +13,7 @@ import {
 } from "viem";
 import { sepolia } from "viem/chains";
 import { z } from "zod";
-import { randomUUID, createHash } from "node:crypto";
+import { createHash } from "node:crypto";
 import Executor from "@/generated/ExitExecutor.json";
 import type { Receipt } from "@/lib/types";
 export const runtime = "nodejs";
@@ -60,12 +61,17 @@ export async function POST(request: Request) {
       } catch {}
     }
     if (!args) throw new Error("Settlement event missing.");
+    const externalId = createHash("sha256")
+      .update(`exit-drill-managed-v2:${userId}:${executor}`)
+      .digest("hex");
     const wallets = await client
       .wallets()
-      .list({ user_id: userId, chain_type: "ethereum" });
+      .list({ external_id: externalId, chain_type: "ethereum" });
     if (
       !wallets.data.some(
-        (w) => w.address.toLowerCase() === args!.owner.toLowerCase(),
+        (w) =>
+          w.external_id === externalId &&
+          w.address.toLowerCase() === args!.owner.toLowerCase(),
       )
     )
       throw new Error("This settlement belongs to another wallet.");
@@ -95,13 +101,14 @@ export async function POST(request: Request) {
     if (net !== args.amountOut)
       throw new Error("Transfer-log reconciliation failed.");
     const transaction = await rpc.getTransaction({ hash: hash as Hex });
+    const block = await rpc.getBlock({ blockNumber: tx.blockNumber });
     const decoded = decodeFunctionData({
       abi: Executor.abi as Abi,
       data: transaction.input,
     });
     const plan = (decoded.args as unknown as [{ minOut: bigint }])[0];
     const receipt: Receipt = {
-      id: randomUUID(),
+      id: `sepolia-${hash.toLowerCase()}`,
       chainId: 11155111,
       mode: "sepolia",
       transactionHash: hash,
@@ -114,13 +121,13 @@ export async function POST(request: Request) {
       gasUsed: tx.gasUsed.toString(),
       feeTier: args.fee,
       status: "confirmed",
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(Number(block.timestamp) * 1000).toISOString(),
       planHash: args.planHash,
       evidenceBlock: 0,
       policy: {
         engine: "privy-and-contract",
         checks: [
-          "Authenticated Privy owner",
+          "Authenticated user matches managed treasury",
           "Successful executor transaction",
           "Settlement event matches token transfer logs",
         ],
@@ -136,14 +143,7 @@ export async function POST(request: Request) {
       .digest("hex");
     return Response.json(receipt);
   } catch (e) {
-    return Response.json(
-      {
-        error:
-          e instanceof Error
-            ? e.message.slice(0, 200)
-            : "Reconciliation failed",
-      },
-      { status: 400 },
-    );
+    const { error, status } = walletError(e);
+    return Response.json({ error }, { status });
   }
 }

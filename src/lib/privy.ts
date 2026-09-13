@@ -2,13 +2,12 @@ import "server-only";
 import { PrivyClient } from "@privy-io/node";
 import { createHash } from "node:crypto";
 import { isAddress, parseAbi, type Address } from "viem";
-import Executor from "../generated/ExitExecutor.json";
 export function privyClient() {
   const appId = process.env.PRIVY_APP_ID,
     appSecret = process.env.PRIVY_APP_SECRET;
   if (!appId || !appSecret)
     throw new Error("Privy credentials are not configured.");
-  return new PrivyClient({ appId, appSecret });
+  return new PrivyClient({ appId, appSecret, timeout: 15000, maxRetries: 0 });
 }
 export function liveConfig() {
   const executor = process.env.NEXT_PUBLIC_EXIT_EXECUTOR_ADDRESS,
@@ -30,15 +29,17 @@ export async function provisionWallet(request: Request) {
   const { client, userId } = await authenticate(request);
   const { executor, token } = liveConfig();
   const idempotencyKey = createHash("sha256")
-    .update(`exit-drill-v1:${userId}:${executor}`)
+    .update(`exit-drill-managed-v2:${userId}:${executor}`)
     .digest("hex");
   const existing = await client.wallets().list({
-    user_id: userId,
     chain_type: "ethereum",
     external_id: idempotencyKey,
   });
-  if (existing.data.length) {
-    const wallet = existing.data[0];
+  const savedWallet = existing.data.find(
+    (w) => w.external_id === idempotencyKey,
+  );
+  if (savedWallet) {
+    const wallet = savedWallet;
     if (!wallet.policy_ids?.length)
       throw new Error(
         "Treasury policy was removed. Reattach its policy before continuing.",
@@ -58,7 +59,6 @@ export async function provisionWallet(request: Request) {
     name: "Exit Drill Sepolia treasury",
     version: "1.0",
     chain_type: "ethereum",
-    owner: { user_id: userId },
     idempotency_key: `policy-${idempotencyKey}`,
     rules: [
       {
@@ -184,7 +184,6 @@ export async function provisionWallet(request: Request) {
   });
   const wallet = await client.wallets().create({
     chain_type: "ethereum",
-    owner: { user_id: userId },
     policy_ids: [policy.id],
     external_id: idempotencyKey,
     idempotency_key: `wallet-${idempotencyKey}`,
@@ -200,14 +199,15 @@ export async function authorizeWallet(request: Request, walletId: string) {
   const auth = await authenticate(request);
   const { executor } = liveConfig();
   const externalId = createHash("sha256")
-    .update(`exit-drill-v1:${auth.userId}:${executor}`)
+    .update(`exit-drill-managed-v2:${auth.userId}:${executor}`)
     .digest("hex");
   const wallets = await auth.client.wallets().list({
-    user_id: auth.userId,
     chain_type: "ethereum",
     external_id: externalId,
   });
-  const wallet = wallets.data.find((w) => w.id === walletId);
+  const wallet = wallets.data.find(
+    (w) => w.id === walletId && w.external_id === externalId,
+  );
   if (!wallet)
     throw new Error("Wallet does not belong to this authenticated user.");
   if (!wallet.policy_ids?.length)

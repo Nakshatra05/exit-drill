@@ -126,8 +126,15 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
           hash: r.hash as Hex,
           timeout: 60000,
         });
-        if (confirmed.status !== "success")
+        if (confirmed.status !== "success") {
+          if (action === "execute") {
+            setPendingExit("");
+            try {
+              localStorage.removeItem(pendingKey);
+            } catch {}
+          }
           throw new Error("Transaction reverted on Sepolia.");
+        }
         setMessage("Sepolia transaction confirmed.");
         if (action === "execute") {
           const receipt = await api("/api/reconcile", { hash: r.hash });
@@ -153,6 +160,28 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
     setBusy("recover");
     setMessage("");
     try {
+      const rpc = createPublicClient({
+        chain: sepolia,
+        transport: http("https://ethereum-sepolia-rpc.publicnode.com", {
+          timeout: 10000,
+          retryCount: 1,
+        }),
+      });
+      const confirmed = await rpc.getTransactionReceipt({
+        hash: pendingExit as Hex,
+      });
+      if (confirmed.status === "reverted") {
+        setHash(pendingExit);
+        setPendingExit("");
+        setQuote(null);
+        try {
+          localStorage.removeItem(pendingKey);
+        } catch {}
+        setMessage(
+          "This transaction reverted. Request a new preview before trying another exit.",
+        );
+        return;
+      }
       onReceipt(await api("/api/reconcile", { hash: pendingExit }));
       setHash(pendingExit);
       setPendingExit("");
@@ -198,9 +227,10 @@ function WalletControl({ onReceipt }: { onReceipt: (r: Receipt) => void }) {
             </div>
             <h2 id="live-title">Make your first test exit.</h2>
             <p>
-              Practice a wallet transaction with valueless test assets. Review a
-              fresh testnet quote before confirming; your rehearsal result is
-              kept separate.
+              Practice with valueless test assets in a wallet managed by Exit
+              Drill. Your sign-in authorizes the actions you request; a signing
+              policy restricts what the wallet can do. Review a fresh testnet
+              quote before confirming.
             </p>
             {!wallet ? (
               <button

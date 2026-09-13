@@ -175,6 +175,15 @@ export default function DocsPage() {
           </section>
           <section id="wallet">
             <h2>Try a testnet exit</h2>
+            <div className={s.docsNote}>
+              <strong>A managed testnet treasury.</strong>
+              <p>
+                Exit Drill manages this demo wallet through Privy. Signing in
+                lets you request actions; the service submits them under a
+                restricted signing policy. This is not a self-custody wallet.
+                Use only valueless test assets.
+              </p>
+            </div>
             <p>
               This workflow uses <strong>Sepolia</strong>, a test network, with
               freely created test WETH and test USDC. These tokens have no

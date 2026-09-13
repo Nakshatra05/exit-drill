@@ -1,5 +1,7 @@
 import { provisionWallet } from "@/lib/privy";
+import { walletError } from "@/lib/wallet-errors";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export async function POST(request: Request) {
   if (!request.headers.get("Authorization")?.startsWith("Bearer "))
     return Response.json(
@@ -9,12 +11,7 @@ export async function POST(request: Request) {
   try {
     return Response.json(await provisionWallet(request));
   } catch (e) {
-    return Response.json(
-      {
-        error:
-          e instanceof Error ? e.message.slice(0, 200) : "Wallet setup failed",
-      },
-      { status: 400 },
-    );
+    const { error, status } = walletError(e);
+    return Response.json({ error }, { status });
   }
 }
