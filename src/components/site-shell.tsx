@@ -38,6 +38,7 @@ export function SiteFooter() {
       </div>
       <nav aria-label="Footer navigation">
         <Link href="/app">Exit planner</Link>
+        <Link href="/verify">Verify settlement</Link>
         <Link href="/docs">Documentation</Link>
         <a
           href="https://github.com/Nakshatra05/exit-drill"

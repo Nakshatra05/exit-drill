@@ -3,7 +3,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Exit Drill — Treasury readiness",
   description:
-    "Rehearse stressed liquidity. Authorize a bounded exit. Reconcile every result.",
+    "From treasury risk to verified settlement. Live market evidence, bounded Sepolia exits, and independently verifiable receipts.",
+  metadataBase: new URL("https://exit-drill.vercel.app"),
   icons: { icon: "/favicon.svg" },
 };
 export default function RootLayout({

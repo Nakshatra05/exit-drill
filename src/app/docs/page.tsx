@@ -125,6 +125,12 @@ export default function DocsPage() {
           <section id="market-data">
             <h2>Understand the market analysis</h2>
             <p>
+              After analyzing an exit, select <strong>Export risk brief</strong>
+              to save the source block, your inputs, route comparison and cash
+              coverage as a portable JSON record. The brief preserves the
+              assumptions behind your decision; it does not authorize a trade.
+            </p>
+            <p>
               The market snapshot uses recent Ethereum WETH/USDC prices,
               liquidity and history. Refresh it before a new analysis; data
               older than ten minutes cannot be used for planning.
@@ -191,6 +197,13 @@ export default function DocsPage() {
           </section>
           <section id="receipts">
             <h2>Settlement receipts</h2>
+            <p>
+              Select <strong>Verify independently</strong> on a receipt, or
+              paste its transaction hash into the{" "}
+              <Link href="/verify">settlement verifier</Link>. Anyone can check
+              the confirmed trade without signing in. Verification checks the
+              transaction and token movements against the exit contract.
+            </p>
             <p>
               The receipts view contains confirmed Sepolia exits. Each record
               includes the input amount, settled output, approved minimum,

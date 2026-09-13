@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { ExitRequest, WalletSnapshot } from "@/lib/wallet-types";
 import { balanceDeltaUsdc } from "@/lib/receipt-math";
+import { createExitBrief } from "@/lib/exit-brief";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -173,6 +174,29 @@ export default function Dashboard({
     a.download = `exit-drill-${r.id}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+  const downloadBrief = () => {
+    if (!result || !evidence) return;
+    try {
+      const brief = createExitBrief(evidence, result);
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(brief, null, 2)], {
+          type: "application/json",
+        }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `exit-brief-${brief.id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setNotice(
+        "Risk brief exported with its market block, inputs, route comparison, and assumptions.",
+      );
+    } catch {
+      setError(
+        "This analysis no longer matches the market snapshot. Run a new analysis before exporting.",
+      );
+    }
   };
   const totalTvl = evidence?.pools.reduce((a, p) => a + p.tvlUsd, 0) ?? 0;
   const coverage = result?.coveragePercent;
@@ -486,6 +510,25 @@ export default function Dashboard({
               </section>
               {result && (
                 <>
+                  <section className="risk-brief-banner">
+                    <div>
+                      <span className="eyebrow">TREASURY DECISION BRIEF</span>
+                      <h2>
+                        {result.shortfallUsdc > 0
+                          ? `${money(result.shortfallUsdc, 2)} cash target shortfall under your scenario`
+                          : "Your cash target is covered under this scenario"}
+                      </h2>
+                      <p>
+                        Ethereum block {result.evidenceBlock.toLocaleString()} ·{" "}
+                        {result.input.shockPercent}% hypothetical shock · Model
+                        estimate, separate from your Sepolia quote.
+                      </p>
+                    </div>
+                    <button className="button light" onClick={downloadBrief}>
+                      <Download size={16} />
+                      Export risk brief
+                    </button>
+                  </section>
                   <section className="metrics" aria-label="Treasury metrics">
                     <article className="metric">
                       <div className="metric-label">
@@ -1187,6 +1230,15 @@ export default function Dashboard({
                       </div>
                     </dl>
                     <div className="receipt-actions">
+                      <a
+                        className="button light compact"
+                        href={`/verify?hash=${r.transactionHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ShieldCheck size={15} />
+                        Verify independently
+                      </a>
                       <a
                         className="button dark compact"
                         href={`https://sepolia.etherscan.io/tx/${r.transactionHash}`}

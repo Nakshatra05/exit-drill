@@ -1825,6 +1825,167 @@ td:first-child {
 .settlement-guide {
   padding: 24px;
 }
+.risk-brief-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 2px solid #20221f;
+  background: #fff3d0;
+  padding: 22px;
+  margin-bottom: 24px;
+}
+.verification-page {
+  max-width: 900px;
+  margin: auto;
+  padding: 64px 5%;
+}
+.project-page {
+  max-width: 1200px;
+  margin: auto;
+  padding: 72px 5%;
+}
+.project-page h1 {
+  font-size: clamp(38px, 5vw, 68px);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  margin: 24px 0;
+}
+.project-intro {
+  font-size: 19px;
+  max-width: 800px;
+  line-height: 1.8;
+  color: #60655c;
+}
+.project-actions {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 30px 0 64px;
+}
+.project-story {
+  border-top: 2px solid #20221f;
+  padding: 32px 0;
+}
+.project-story h2,
+.project-boundaries h2 {
+  font-size: 28px;
+  margin: 8px 0 20px;
+}
+.project-story p,
+.project-story li,
+.project-boundaries p {
+  font-size: 16px;
+  line-height: 1.9;
+}
+.project-story li {
+  padding-left: 10px;
+  margin-bottom: 12px;
+}
+.project-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin: 24px 0 48px;
+}
+.project-pillars article {
+  border: 2px solid #20221f;
+  padding: 24px;
+  background: white;
+  box-shadow: 5px 5px 0 #20221f;
+}
+.project-pillars article > svg {
+  margin-bottom: 24px;
+}
+.project-pillars h2 {
+  font-size: 25px;
+  line-height: 1.15;
+  margin: 18px 0;
+}
+.project-pillars p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #60655c;
+}
+.project-pillars a,
+.project-boundaries a {
+  font-size: 12px;
+  font-weight: 600;
+  text-underline-offset: 4px;
+}
+.project-boundaries {
+  background: #eaf4d0;
+  border: 2px solid #20221f;
+  padding: 28px;
+  margin-top: 30px;
+}
+@media (max-width: 900px) {
+  .project-pillars {
+    grid-template-columns: 1fr;
+  }
+}
+.verification-page h1 {
+  font-size: clamp(32px, 5vw, 54px);
+  line-height: 1.12;
+}
+.verification-page > p {
+  line-height: 1.8;
+  color: #60655c;
+  margin: 24px 0 36px;
+}
+.verification-input {
+  width: 100%;
+  border: 2px solid #20221f;
+  padding: 16px;
+  font: inherit;
+  background: white;
+}
+.verification-result {
+  margin-top: 32px;
+  padding: 24px;
+  border: 2px solid #20221f;
+  box-shadow: 5px 5px 0 #20221f;
+  background: #eaf4d0;
+}
+.verification-result h2 {
+  font-size: 24px;
+  margin: 15px 0;
+  overflow-wrap: anywhere;
+}
+.verification-result ul {
+  padding: 0;
+  list-style: none;
+}
+.verification-result li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  font-size: 13px;
+}
+.hash-text {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.risk-brief-banner h2 {
+  font-size: 22px;
+  margin: 10px 0;
+}
+.risk-brief-banner p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+.risk-brief-banner button {
+  flex-shrink: 0;
+}
+@media (max-width: 720px) {
+  .risk-brief-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
 .settlement-guide h2 {
   font-size: 24px;
   margin: 12px 0 24px;
