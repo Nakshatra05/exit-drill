@@ -48,7 +48,7 @@ export function SiteFooter() {
           Source code ↗
         </a>
       </nav>
-      <span>Built for ETHOnline 2026</span>
+      <span>Treasury exits on Sepolia</span>
     </footer>
   );
 }

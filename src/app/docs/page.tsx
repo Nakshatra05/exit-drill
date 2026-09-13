@@ -225,13 +225,6 @@ export default function DocsPage() {
           </section>
           <section id="troubleshooting">
             <h2>Questions & help</h2>
-            <h3>MetaMask says the site is unsafe.</h3>
-            <p>
-              Do not bypass the warning or sign a request. Check that the URL is
-              exit-drill.vercel.app and capture the warning details for a
-              security review. A site classification must be reviewed by the
-              wallet’s security provider; disabling protection is not a fix.
-            </p>
             <h3>Why does wallet sign-in request a signature?</h3>
             <p>
               The sign-in message proves that you control your account. It

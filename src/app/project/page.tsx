@@ -3,7 +3,7 @@ import { ArrowUpRight, ShieldCheck, FileCheck2, Activity } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/site-shell";
 import s from "../site.module.css";
 export const metadata = {
-  title: "Project walkthrough — Exit Drill",
+  title: "How Exit Drill works",
   description:
     "Live treasury evidence, reusable MCP risk tools, policy-controlled Sepolia execution, and independent settlement verification.",
 };
@@ -13,7 +13,7 @@ export default function ProjectPage() {
     <div className={s.site}>
       <SiteHeader />
       <main className="project-page">
-        <span className="eyebrow">ETHONLINE 2026 / PROJECT WALKTHROUGH</span>
+        <span className="eyebrow">FROM TREASURY INSIGHT TO SETTLEMENT</span>
         <h1>
           A balance becomes a decision.
           <br />A decision becomes proof.
@@ -117,9 +117,7 @@ export default function ProjectPage() {
             No embedded LLM, autonomous trader, or fabricated chat response is
             claimed.
           </p>
-          <a href="https://github.com/Nakshatra05/exit-drill/blob/main/submission/READINESS.md">
-            Submission evidence and outstanding requirements ↗
-          </a>
+          <Link href="/docs">Read the user guide ↗</Link>
         </section>
       </main>
       <SiteFooter />

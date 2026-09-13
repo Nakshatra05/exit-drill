@@ -1283,7 +1283,7 @@ export default function Dashboard({
               <span className="subtle">/ Built for the moment it matters.</span>
             </span>
             <span>
-              ETHOnline 2026 <span className="footer-divider">·</span>
+              Sepolia testnet <span className="footer-divider">·</span>
               <a href="/docs">
                 User guide <ArrowUpRight size={13} />
               </a>

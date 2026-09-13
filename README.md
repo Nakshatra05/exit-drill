@@ -2,11 +2,11 @@
 
 **Know what you can exit. Set the limits. Prove the outcome.**
 
-A Sepolia treasury exit application for ETHOnline 2026. Fund a managed treasury, choose WETH to sell, approve a bounded spending limit, review a live USDC quote, and verify the confirmed settlement. Optional risk analysis estimates cash coverage under market shocks.
+A treasury exit application on Sepolia. Fund a managed treasury, choose WETH to sell, approve a bounded spending limit, review a live USDC quote, and verify the confirmed settlement. Optional risk analysis estimates cash coverage under market shocks.
 
 ## Use the app
 
-[Project walkthrough](https://exit-drill.vercel.app/project) · [Independent settlement verifier](https://exit-drill.vercel.app/verify) · [Graph-powered MCP toolkit](tools/exit-risk-mcp/README.md) · [Submission packet](submission/SUBMISSION.md)
+[How it works](https://exit-drill.vercel.app/project) · [Independent settlement verifier](https://exit-drill.vercel.app/verify) · [Graph-powered MCP toolkit](tools/exit-risk-mcp/README.md)
 
 Visit [the landing page](https://exit-drill.vercel.app), [the exit planner](https://exit-drill.vercel.app/app), or [the documentation](https://exit-drill.vercel.app/docs).
 
@@ -32,7 +32,7 @@ npm run dev
 
 Open http://localhost:3000. `npm run build` includes TypeScript checking. Generated ABI/bytecode artifacts are committed; CI verifies reproducible compilation.
 
-Live demo: **https://exit-drill.vercel.app**. Run `npm run test:smoke -- https://exit-drill.vercel.app` to verify its complete API flow, contract rejection, exact balance reconciliation, checksum and input/authentication rejection.
+Live application: **https://exit-drill.vercel.app**. Run `npm run test:smoke -- https://exit-drill.vercel.app` to verify its complete API flow, contract rejection, exact balance reconciliation, checksum and input/authentication rejection.
 
 ## Architecture
 
@@ -65,7 +65,7 @@ Live TVL and price calibrate synthetic full-range pools. This is **not a mainnet
 
 ### Privy and Sepolia
 
-Set `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, and matching `NEXT_PUBLIC_PRIVY_APP_ID`. Add localhost and the production origin to the Privy app's allowed domains. Rebuild after changing public variables. The app uses `@privy-io/react-auth` and `@privy-io/node`. The backend verifies the authenticated user’s JWT, derives a stable treasury external ID, and verifies that exact mapping on every action. Wallets and policies are app-managed; the app secret authorizes Privy requests, while Privy enforces the attached chain/contract/method policy. This is a managed testnet demo, not self-custody. Privy is never simulated in reference mode.
+Set `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, and matching `NEXT_PUBLIC_PRIVY_APP_ID`. Add localhost and the production origin to the Privy app's allowed domains. Rebuild after changing public variables. The app uses `@privy-io/react-auth` and `@privy-io/node`. The backend verifies the authenticated user’s JWT, derives a stable treasury external ID, and verifies that exact mapping on every action. Wallets and policies are app-managed; the app secret authorizes Privy requests, while Privy enforces the attached chain/contract/method policy. This is a managed testnet application, not self-custody. Privy is never simulated in reference mode.
 
 For public testnet contracts, set a test-only `DEPLOYER_PRIVATE_KEY` and `SEPOLIA_RPC_URL` locally:
 
@@ -92,17 +92,13 @@ To check the deployed contracts independently, run `node --env-file=.env.local -
 
 Tests cover actual Uniswap execution, stress, route selection, receipt reconciliation, substituted recipient, oversized input, zero minimum, expired/unbounded deadlines, forbidden fee, insufficient output, replay and cleared router allowance. Domain tests reject malformed, unapproved and arbitrary-calldata requests. GitHub Actions runs tests and the production build.
 
-This is a hackathon MVP, **not an audited custody system**. Dashboard calculations use JavaScript numbers; contracts use integer token units. No price oracle, gas-aware optimization, durable database, distributed limiter or mainnet signing is included. Per-instance rate limiting provides basic backpressure, not global abuse protection. Ganache and wallet SDK transitive dependencies have known audit advisories: review and isolate/replace the sandbox before handling production assets. Test tokens allow public minting. Privy wallets and policies are app-managed. Protect the server app secret; it controls these resources. Users have no direct policy-edit endpoint. Sandbox approval is UI consent, not a cryptographic signature or server-held spending mandate.
+This is a testnet MVP, **not an audited custody system**. Dashboard calculations use JavaScript numbers; contracts use integer token units. No price oracle, gas-aware optimization, durable database, distributed limiter or mainnet signing is included. Per-instance rate limiting provides basic backpressure, not global abuse protection. Ganache and wallet SDK transitive dependencies have known audit advisories: review and isolate/replace the sandbox before handling production assets. Test tokens allow public minting. Privy wallets and policies are app-managed. Protect the server app secret; it controls these resources. Users have no direct policy-edit endpoint. Sandbox approval is UI consent, not a cryptographic signature or server-held spending mandate.
 
-The MCP toolkit targets The Graph's AI tooling category as reusable infrastructure for external AI hosts. It is not an embedded chatbot or autonomous trader. Protocol discovery, input rejection, stdio startup and live same-block shock comparison are tested. A single subgraph query is not presented as qualifying for the composable-data category.
-
-## Hackathon handoff
-
-Read the [submission draft](submission/SUBMISSION.md), [human-narrated demo script](submission/DEMO-SCRIPT.md), and [remaining submission checklist](submission/READINESS.md). [FEEDBACK.md](FEEDBACK.md) records Uniswap developer feedback; its required external form has not been submitted. Team/track confirmation and a human-narrated video remain team responsibilities.
+The MCP toolkit provides reusable risk analysis for external AI hosts. Protocol discovery, input rejection, stdio startup and live same-block shock comparison are tested. See [developer feedback](FEEDBACK.md) for integration experience and limitations.
 
 ## Attribution
 
-Implemented with extensive Codex assistance directed by the project owner during ETHOnline 2026. Read [AI attribution](AI_ATTRIBUTION.md) and the [sanitized requirements](submission/REQUIREMENTS.md). Third-party dependencies are locked in package-lock.json.
+Implemented with extensive Codex assistance directed by the project owner. See [AI attribution](AI_ATTRIBUTION.md). Third-party dependencies are locked in package-lock.json.
 
 - [Uniswap v3 core](https://github.com/Uniswap/v3-core) and [periphery](https://github.com/Uniswap/v3-periphery): official package artifacts; upstream licenses apply.
 - [The Graph documentation](https://thegraph.com/docs/)

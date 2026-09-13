@@ -338,8 +338,8 @@ function WalletControl({
                 </p>
                 <p className="wallet-disclosure">
                   Exit Drill manages a separate Sepolia treasury for your
-                  account. If your wallet flags this site as unsafe, stop and
-                  use its security review process.
+                  account. Your sign-in wallet and treasury have separate
+                  balances.
                 </p>
                 <button
                   className="button dark full-width"
