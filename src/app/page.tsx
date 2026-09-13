@@ -27,12 +27,12 @@ export default function Page() {
               <span>exit plan.</span>
             </h1>
             <p>
-              Markets move. Payroll doesn’t. Pressure-test your treasury, set
-              the limits, and know what actually settles.
+              Move WETH into USDC with clear limits. Manage your Sepolia
+              treasury, review a live quote, and verify what settles.
             </p>
             <div className={s.actions}>
               <Link className={s.primary} href="/app">
-                Analyze your treasury <ArrowUpRight size={21} />
+                Open your treasury <ArrowUpRight size={21} />
               </Link>
               <Link className={s.textLink} href="/docs">
                 Read the guide <ArrowRight size={17} />
@@ -164,9 +164,9 @@ export default function Page() {
           <div>
             <span className={s.eyebrow}>02 / LIMITS THAT HOLD</span>
             <h2>
-              Don’t just test the exit.
+              Your amount.
               <br />
-              Test what gets blocked.
+              Your limits.
             </h2>
             <p>
               Set the amount and minimum received before confirming. Proceeds
@@ -201,8 +201,10 @@ export default function Page() {
             </dl>
             <p>
               <span />
-              WrongRecipient{" "}
-              <small>Transaction rejected. No tokens moved.</small>
+              Treasury protection{" "}
+              <small>
+                Proceeds return to the treasury that initiated the exit.
+              </small>
             </p>
           </div>
         </section>
@@ -244,7 +246,7 @@ export default function Page() {
             Open your treasury <ArrowUpRight size={22} />
           </Link>
           <span className={s.ctaFoot}>
-            30 WETH. One price shock. A result you can act on.
+            Actual Sepolia balances. Clear quotes. Confirmed receipts.
           </span>
         </section>
       </main>
